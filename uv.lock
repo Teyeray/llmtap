@@ -133,6 +133,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pyflakes" },
     { name = "pytest" },
 ]
 
@@ -146,7 +147,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.0" }]
+dev = [
+    { name = "pyflakes", specifier = ">=3.2" },
+    { name = "pytest", specifier = ">=8.0" },
+]
 
 [[package]]
 name = "markdown-it-py"
@@ -211,6 +215,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
+]
+
+[[package]]
+name = "pyflakes"
+version = "4.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/5e/17305a7708e22df56b332f2f4c202d0a830e9689634da2f727212d806de9/pyflakes-4.0.2.tar.gz", hash = "sha256:dcf9cfcece3d9dacc66b7dd2fa217c1a1b79e3075bf488909c15e0857203fd24", size = 67173, upload-time = "2026-10-03T21:14:01.663Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b6/a8/7df0a3b4f8166c2fb7fe0195f88a0a643cfb7cd1b0430c19f74bd01771f5/pyflakes-4.0.2-py2.py3-none-any.whl", hash = "sha256:01faee1160feadfd9d58c9631a895126ba2032c2e8748e32a96ab51cbd084c6d", size = 66216, upload-time = "2026-10-03T21:13:59.732Z" },
 ]
 
 [[package]]
