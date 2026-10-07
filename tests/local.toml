@@ -1,0 +1,19 @@
+# Local config for offline tests. Points at scripts/fake_server.py.
+
+[defaults]
+prompt = "Say hello."
+max_tokens = 128
+timeout = 30
+
+[profiles.local7b]
+base_url = "http://127.0.0.1:8765/v1"
+model = "fake-7b"
+
+[profiles.local]
+base_url = "http://127.0.0.1:8765/v1"
+api_key_env = "FAKE_KEY"
+models = ["fake-7b", "fake-72b"]
+
+[pricing."fake-"]
+input = 0.0
+output = 0.0
