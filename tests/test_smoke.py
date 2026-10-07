@@ -87,41 +87,41 @@ def test_cli_end_to_end(tmp_path) -> None:
     try:
         exe = [sys.executable, "-m", "llmtap.cli"]
         out = subprocess.run(exe + ["list"], env=env, capture_output=True,
-                             text=True, cwd=str(ROOT))
+                             text=True, encoding="utf-8", cwd=str(ROOT))
         assert "local7b" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["test", "local7b"], env=env,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "TTFT" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["bench", "local7b", "--n", "3", "-c", "2"],
-                             env=env, capture_output=True, text=True,
+                             env=env, capture_output=True, text=True, encoding="utf-8",
                              cwd=str(ROOT))
         assert "p95" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["models", "local7b"], env=env,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "fake-72b" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["scan", "local7b", "-c", "2"], env=env,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "2/2" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["probe", "local7b", "--timeout", "30"],
-                             env=env, capture_output=True, text=True,
+                             env=env, capture_output=True, text=True, encoding="utf-8",
                              cwd=str(ROOT))
         assert "downgrade" in out.stdout.lower(), out.stdout + out.stderr
 
         # --- ergonomics: URL as first argument, no model needed ---
         url = "http://127.0.0.1:8765/v1"
         out = subprocess.run(exe + ["models", url], env=env,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "fake-72b" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["scan", url, "-c", "2"], env=env,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "2/2" in out.stdout, out.stdout + out.stderr
         out = subprocess.run(exe + ["test", url, "-m", "fake-7b",
                                     "--max-tokens", "8"], env=env,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "TTFT" in out.stdout, out.stdout + out.stderr
         # two models, no -m, no tty -> clear error, not a traceback
         out = subprocess.run(exe + ["test", url], env=env, stdin=subprocess.DEVNULL,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert out.returncode == 2 and "fake-72b" in out.stdout
         assert "Traceback" not in out.stderr
 
@@ -129,26 +129,26 @@ def test_cli_end_to_end(tmp_path) -> None:
         cfg = tmp_path / "c.toml"
         env2 = dict(env, LLMTAP_CONFIG=str(cfg))
         out = subprocess.run(exe + ["init", "--path", str(cfg)], env=env2,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert cfg.exists(), out.stdout + out.stderr
         out = subprocess.run(exe + ["add", "demo", "-u", url, "-m", "fake-72b"],
-                             env=env2, capture_output=True, text=True,
+                             env=env2, capture_output=True, text=True, encoding="utf-8",
                              cwd=str(ROOT))
         assert "demo" in out.stdout, out.stdout + out.stderr
         # duplicate name is refused
         out = subprocess.run(exe + ["add", "demo", "-u", url, "-m", "x"],
-                             env=env2, capture_output=True, text=True,
+                             env=env2, capture_output=True, text=True, encoding="utf-8",
                              cwd=str(ROOT))
         assert out.returncode == 1
         text = cfg.read_text().replace('# profile = "ollama"',
                                        'profile = "demo"')
         cfg.write_text(text)
         out = subprocess.run(exe + ["list"], env=env2, capture_output=True,
-                             text=True, cwd=str(ROOT))
+                             text=True, encoding="utf-8", cwd=str(ROOT))
         assert "demo *" in out.stdout, out.stdout + out.stderr
         # default profile is picked when PROFILE is omitted
         out = subprocess.run(exe + ["show"], env=env2, stdin=subprocess.DEVNULL,
-                             capture_output=True, text=True, cwd=str(ROOT))
+                             capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
         assert "fake-72b" in out.stdout, out.stdout + out.stderr
     finally:
         if server:
