@@ -20,7 +20,7 @@ from .client import bench_run, list_models, run_chat
 from .config import ConfigError, ModelTarget, load_targets
 from .i18n import t, toggle_lang
 from .probe import probe_tables, run_probe
-from .report import bench_tables, single_result_table
+from .report import bench_tables, single_result_table, target_detail
 from .scan import scan_endpoint, scan_tables
 from .stats import aggregate, apply_cost
 
@@ -54,9 +54,7 @@ class DetailsScreen(ModalScreen[None]):
         self.target = target
 
     def compose(self) -> ComposeResult:
-        from rich.pretty import Pretty
-        yield Static(Pretty(self.target.safe_dict()), id="details",
-                     expand=True)
+        yield Static(target_detail(self.target), id="details", expand=True)
 
     def action_dismiss_screen(self) -> None:
         self.dismiss(None)

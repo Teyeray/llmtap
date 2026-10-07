@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from rich.console import Group
 from rich.panel import Panel
-from rich.pretty import Pretty
 from rich.table import Table
 from rich.text import Text
 
@@ -42,7 +41,7 @@ def targets_table(targets: list[ModelTarget]) -> Table:
         table.add_column(t(key))
     for tg in targets:
         table.add_row(
-            tg.profile,
+            tg.profile + (" *" if tg.default else ""),
             tg.model,
             tg.base_url,
             tg.key_display,
@@ -57,8 +56,14 @@ def targets_table(targets: list[ModelTarget]) -> Table:
 
 def target_detail(target: ModelTarget) -> Panel:
     """Full config of one target, API key value removed."""
-    body = Pretty(target.safe_dict())
-    return Panel(body, title=t("report.config_of", profile=target.profile),
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="cyan", justify="right")
+    table.add_column()
+    for key, value in target.safe_dict().items():
+        if value in (None, "", {}, []):
+            value = NA
+        table.add_row(key, str(value))
+    return Panel(table, title=t("report.config_of", profile=target.profile),
                  subtitle=t("report.source", src=target.source or NA),
                  border_style="cyan")
 

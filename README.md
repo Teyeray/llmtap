@@ -48,14 +48,26 @@ uv run llmtap --help
 ## Quick start — no config needed
 
 ```bash
-# local Ollama
-llmtap test --base-url http://127.0.0.1:11434/v1 --model qwen2.5:7b
-
-# any OpenAI-compatible endpoint, key from an env var
-export MY_KEY=sk-xxx
-llmtap test --base-url https://api.deepseek.com/v1 --model deepseek-chat \
-    --api-key-env MY_KEY
+llmtap test https://api.deepseek.com/v1 -k sk-xxx -m deepseek-chat   # or
+llmtap test https://api.deepseek.com/v1 -k sk-xxx                    # picks a model
+llmtap scan https://some-relay.com/v1 -k sk-xxx                      # scan every model
+llmtap test http://127.0.0.1:11434/v1 -m qwen2.5:7b                  # local Ollama
 ```
+
+A bare URL works as the first argument. `-m` is optional: when you omit it,
+llmtap lists the endpoint models and asks you to pick one. Keys come from `-k`,
+`--api-key-env NAME`, `$LLMTAP_API_KEY` or `$OPENAI_API_KEY`.
+
+Save an endpoint for later, no TOML editing:
+
+```bash
+llmtap init                              # create ~/.config/llmtap/config.toml
+llmtap add deepseek -u https://api.deepseek.com/v1 -k sk-xxx
+llmtap test deepseek
+```
+
+When you omit PROFILE, llmtap uses the only configured profile, else the
+`[defaults] profile` entry, else it asks you to pick.
 
 ![llmtap test](docs/img/test.svg)
 
@@ -68,6 +80,7 @@ Search order: `--config`, `$LLMTAP_CONFIG`, `./llmtap.toml`, `~/.config/llmtap/c
 prompt = "Count from 1 to 20 slowly."
 max_tokens = 512
 temperature = 0.7
+profile = "deepseek"              # used when PROFILE is omitted
 
 [profiles.deepseek]                # one endpoint, one model
 base_url = "https://api.deepseek.com/v1"
@@ -92,17 +105,20 @@ With `models`, profiles expand to `kimi/kimi-k2-0905-preview` etc. Unique prefix
 
 | Command | What it does |
 |---|---|
+| `llmtap` | open the TUI (shows help when no config exists) |
+| `llmtap init` | create `~/.config/llmtap/config.toml` |
+| `llmtap add NAME -u URL [-k KEY] [-m MODEL]` | append a profile to the config |
 | `llmtap list` | table of every configured model with every setting |
 | `llmtap show PROFILE` | full config of one profile |
 | `llmtap models PROFILE` | call `GET /models`, list endpoint model ids |
 | `llmtap test PROFILE` | one request, all metrics, response preview |
-| `llmtap bench PROFILE --n 10 -c 2` | load bench with full statistics |
+| `llmtap bench PROFILE -n 10 -c 2` | load bench with full statistics |
 | `llmtap bench --all` | bench every profile, comparison table |
 | `llmtap probe PROFILE` | downgrade probe, 6 checks, score 0-100 |
 | `llmtap scan PROFILE` | scan every model on the endpoint |
 | `llmtap tui` | interactive TUI |
 
-Common options: `-p` prompt, `--max-tokens`, `--temperature`, `--no-stream`, `--full`.
+PROFILE can be a profile name, a unique prefix, or a bare URL. Common options: `-u` URL, `-m` model, `-k` key, `-p` prompt, `--max-tokens`, `--temperature`, `--no-stream`, `--full`.
 
 ![llmtap bench](docs/img/bench.svg)
 

@@ -48,14 +48,25 @@ uv run llmtap --help
 ## 快速开始:不写配置
 
 ```bash
-# 本地 Ollama
-llmtap test --base-url http://127.0.0.1:11434/v1 --model qwen2.5:7b
-
-# 任意 OpenAI 兼容端点,key 放环境变量
-export MY_KEY=sk-xxx
-llmtap test --base-url https://api.deepseek.com/v1 --model deepseek-chat \
-    --api-key-env MY_KEY
+llmtap test https://api.deepseek.com/v1 -k sk-xxx -m deepseek-chat   # 或
+llmtap test https://api.deepseek.com/v1 -k sk-xxx                    # 自动选模型
+llmtap scan https://some-relay.com/v1 -k sk-xxx                      # 扫描全部模型
+llmtap test http://127.0.0.1:11434/v1 -m qwen2.5:7b                  # 本地 Ollama
 ```
+
+第一个参数可以直接写 URL。`-m` 可省略:省略时先拉 /models 列表,再让你按编号选。
+密钥来源优先级:`-k`、`--api-key-env 变量名`、`$LLMTAP_API_KEY`、`$OPENAI_API_KEY`。
+
+把端点存下来,不用手写 TOML:
+
+```bash
+llmtap init                              # 生成 ~/.config/llmtap/config.toml
+llmtap add deepseek -u https://api.deepseek.com/v1 -k sk-xxx
+llmtap test deepseek
+```
+
+不带 PROFILE 时:只有一个 profile 就用它;配置了 `[defaults] profile` 就用默认;
+否则提示你选择。
 
 ![llmtap test](docs/img/test.svg)
 
@@ -68,6 +79,7 @@ llmtap test --base-url https://api.deepseek.com/v1 --model deepseek-chat \
 prompt = "Count from 1 to 20 slowly."
 max_tokens = 512
 temperature = 0.7
+profile = "deepseek"              # 省略 PROFILE 时使用
 
 [profiles.deepseek]                # 一个端点,一个模型
 base_url = "https://api.deepseek.com/v1"
@@ -92,17 +104,20 @@ output = 1.10
 
 | 命令 | 作用 |
 |---|---|
+| `llmtap` | 直接进 TUI(无配置时显示帮助) |
+| `llmtap init` | 生成 `~/.config/llmtap/config.toml` |
+| `llmtap add 名字 -u URL [-k KEY] [-m 模型]` | 往配置追加一个 profile |
 | `llmtap list` | 表格显示所有模型的全部配置 |
 | `llmtap show PROFILE` | 一个 profile 的完整配置 |
 | `llmtap models PROFILE` | 调 GET /models,列出端点模型 |
 | `llmtap test PROFILE` | 单请求,全部指标,响应预览 |
-| `llmtap bench PROFILE --n 10 -c 2` | 压测,完整统计 |
+| `llmtap bench PROFILE -n 10 -c 2` | 压测,完整统计 |
 | `llmtap bench --all` | 压测全部 profile,输出对比表 |
 | `llmtap probe PROFILE` | 降智检测,6 题,总分 0-100 |
 | `llmtap scan PROFILE` | 扫描端点上全部模型 |
 | `llmtap tui` | 交互界面 |
 
-常用选项:`-p` 换 prompt,`--max-tokens`,`--temperature`,`--no-stream`,`--full`。
+PROFILE 可以是 profile 名、唯一前缀,或直接一个 URL。常用选项:`-u` 地址,`-m` 模型,`-k` 密钥,`-p` prompt,`--max-tokens`,`--temperature`,`--no-stream`,`--full`。
 
 ![llmtap bench](docs/img/bench.svg)
 
