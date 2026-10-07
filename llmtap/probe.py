@@ -14,7 +14,6 @@ import random
 import re
 from dataclasses import dataclass, field
 
-from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
@@ -23,7 +22,7 @@ from rich.text import Text
 from .client import RequestResult, chat_with_fallback
 from .config import ModelTarget
 from .i18n import t
-from .theme import HEADER, VERDICT
+from .theme import HEADER, VERDICT, table_box
 
 PROBE_MAX_TOKENS = 2048
 
@@ -234,7 +233,7 @@ def _mark(cr: CheckResult) -> str:
 def probe_tables(report: ProbeReport, target: ModelTarget) -> Group:
     t_ = Table(title=t("probe.title", profile=target.profile,
                        n=len(report.results)),
-               box=box.SIMPLE_HEAD, header_style=HEADER)
+               box=table_box(), header_style=HEADER)
     for key in ("col.check", "col.weight", "col.result", "col.latency",
                 "col.expected", "col.got"):
         t_.add_column(t(key))

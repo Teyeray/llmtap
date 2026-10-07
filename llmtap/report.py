@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
@@ -11,7 +10,7 @@ from rich.text import Text
 from .client import RequestResult
 from .config import ModelTarget
 from .i18n import t
-from .theme import ACCENT, BAD, HEADER, OK
+from .theme import ACCENT, BAD, HEADER, OK, table_box
 from .stats import Agg, percentile
 
 NA = "-"
@@ -35,7 +34,7 @@ def _row(s: dict | None, nd: int = 0) -> list[str]:
 
 def targets_table(targets: list[ModelTarget]) -> Table:
     """Every model with every key setting, one row per target."""
-    table = Table(title=t("report.configured_models"), box=box.SIMPLE_HEAD,
+    table = Table(title=t("report.configured_models"), box=table_box(),
                   header_style=HEADER)
     for key in ("col.profile", "col.model", "col.base_url", "col.api_key",
                 "col.temp", "col.max_tok", "col.timeout", "col.price_in",
@@ -72,7 +71,7 @@ def target_detail(target: ModelTarget) -> Panel:
 
 def single_result_table(r: RequestResult, target: ModelTarget) -> Table:
     table = Table(title=t("report.single_title", profile=target.profile),
-                  box=box.SIMPLE_HEAD, header_style=HEADER)
+                  box=table_box(), header_style=HEADER)
     table.add_column(t("report.metric"))
     table.add_column(t("col.value"), justify="right")
     table.add_column(t("col.note"))
@@ -127,7 +126,7 @@ def bench_tables(agg: Agg, target: ModelTarget, n: int, concurrency: int,
     mode = t("report.mode_stream" if stream else "report.mode_nonstream")
     table = Table(title=t("report.bench_title", profile=target.profile, n=n,
                           c=concurrency, mode=mode),
-                  box=box.SIMPLE_HEAD, header_style=HEADER)
+                  box=table_box(), header_style=HEADER)
     table.add_column(t("report.metric"))
     for col in ("mean", "p50", "p95", "min", "max"):
         table.add_column(col, justify="right")
@@ -137,7 +136,7 @@ def bench_tables(agg: Agg, target: ModelTarget, n: int, concurrency: int,
     table.add_row(t("b.decode"), *_row(agg.tps, nd=1))
     table.add_row(t("b.out_tokens"), *_row(agg.out_tokens, nd=0))
 
-    s = Table(box=box.SIMPLE_HEAD, show_header=False)
+    s = Table(box=table_box(), show_header=False)
     s.add_column()
     s.add_column(justify="right")
     s.add_row(t("b.ok_total"), f"{agg.ok}/{agg.n}")
@@ -157,7 +156,7 @@ def bench_tables(agg: Agg, target: ModelTarget, n: int, concurrency: int,
 
 def compare_table(rows: list[tuple[str, Agg]]) -> Table:
     """One row per profile for `bench --all` runs."""
-    table = Table(title=t("report.comparison"), box=box.SIMPLE_HEAD,
+    table = Table(title=t("report.comparison"), box=table_box(),
                   header_style=HEADER)
     for key in ("col.profile", "col.ok", "col.err_pct", "col.ttft_p50",
                 "col.total_p50", "col.tps_p50", "col.cost"):
@@ -177,7 +176,7 @@ def compare_table(rows: list[tuple[str, Agg]]) -> Table:
 
 
 def models_table(ids: list[str]) -> Table:
-    table = Table(title=t("report.get_models"), box=box.SIMPLE_HEAD,
+    table = Table(title=t("report.get_models"), box=table_box(),
                   header_style=HEADER)
     table.add_column(t("col.model_id"))
     for i in ids:

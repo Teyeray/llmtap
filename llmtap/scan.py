@@ -6,7 +6,6 @@ import asyncio
 from dataclasses import dataclass, field
 
 import httpx
-from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
@@ -15,7 +14,7 @@ from rich.text import Text
 from .client import chat_with_fallback, list_models
 from .config import ModelTarget
 from .i18n import t
-from .theme import BAD, HEADER, OK, WARN
+from .theme import BAD, HEADER, OK, WARN, table_box
 from .stats import percentile
 
 SCAN_PROMPT = "Reply with exactly: OK"
@@ -106,7 +105,7 @@ def scan_tables(report: ScanReport, target: ModelTarget) -> Group:
 
     table = Table(title=t("scan.title", host=target.host,
                           n=len(report.rows), m=report.listed),
-                  box=box.SIMPLE_HEAD, header_style=HEADER)
+                  box=table_box(), header_style=HEADER)
     for key in ("col.model", "col.status", "col.ttft", "col.tps",
                 "col.out_tok", "col.error"):
         table.add_column(t(key))

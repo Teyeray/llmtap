@@ -37,6 +37,7 @@ from llmtap.theme import ACCENT, DIM  # noqa: E402
 
 IMG = ROOT / "docs" / "img"
 WIDTH = 118
+os.environ["COLUMNS"] = str(WIDTH)  # tables read this for their border
 
 
 def new_console() -> Console:

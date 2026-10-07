@@ -38,3 +38,14 @@ def tui_theme():
         error=BAD,
         dark=True,
     )
+
+
+def table_box(min_width: int = 100):
+    """Table border. Wide terminals get a header rule, narrow ones do not."""
+    from rich import box
+    from rich.console import Console
+    try:
+        width = Console().width
+    except Exception:
+        width = 80
+    return box.SIMPLE_HEAD if width >= min_width else None
