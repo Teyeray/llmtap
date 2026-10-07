@@ -1,34 +1,50 @@
-# llmtap
+<p align="center">
+  <img src="docs/img/banner.png" alt="llmtap" width="760">
+</p>
 
-**Terminal tester for LLM APIs.** Measure TTFT, throughput and token stats. Probe for model downgrade. Scan relay stations. One tool, any OpenAI-compatible endpoint.
+<p align="center">
+  <b>Terminal tester for LLM APIs.</b><br>
+  Measure TTFT and throughput. Probe for model downgrade. Scan relay stations.<br>
+  One tool, any OpenAI-compatible endpoint.
+</p>
 
-[![CI](https://github.com/USERNAME/llmtap/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/llmtap/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/llmtap)](https://pypi.org/project/llmtap/)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)]()
-[![中文文档](https://img.shields.io/badge/README-中文-red)](README.zh-CN.md)
+<p align="center">
+  <a href="https://github.com/Teyeray/llmtap/actions/workflows/ci.yml"><img src="https://github.com/Teyeray/llmtap/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/llmtap/"><img src="https://img.shields.io/pypi/v/llmtap.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/llmtap/"><img src="https://img.shields.io/pypi/pyversions/llmtap.svg" alt="Python"></a>
+  <a href="https://pepy.tech/project/llmtap"><img src="https://static.pepy.tech/badge/llmtap/month" alt="Downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/文档-中文-red.svg" alt="中文"></a>
+</p>
 
-![TUI](docs/img/tui.svg)
+<p align="center">
+  <img src="docs/img/demo.gif" alt="llmtap demo" width="860">
+</p>
+
+<p align="center"><sub>Recorded against the bundled fake server. No API key needed: <code>llmtap scan local7b</code></sub></p>
+
+---
 
 ## Why
 
-You pay for `claude-opus-4.6` on a relay. Is the relay really serving that model? Is it fast? Which of your five API keys has the best TTFT tonight? `llmtap` answers these from the terminal. No dashboard, no signup, no data leaving your machine.
+You pay for a flagship model on a relay. Is the relay really serving that model? How fast is it tonight? Which of your five API keys has the best TTFT?
+
+`llmtap` answers these from the terminal. No dashboard, no signup, no data leaves your machine. Point it at OpenAI, DeepSeek, Moonshot, Qwen, OpenRouter, Ollama, LM Studio, vLLM, or any relay that speaks the OpenAI API.
 
 ## Features
 
-- **Latency test** — TTFT, time to first chunk, total time, inter-token latency (ITL p50/p95).
-- **Throughput stats** — decode speed (tok/s), overall speed, input/output tokens, usage-aware.
-- **Load bench** — N requests with configurable concurrency. Mean / p50 / p95 / min / max / stdev.
-- **Downgrade probe** — 6 fixed English checks, regex-scored, no judge model. Score 0-100.
-- **Relay scan** — discover every model on an endpoint via `GET /models`, test each for status and TTFT.
-- **Cost estimate** — optional per-model pricing in the config, cost per request and per run.
-- **TUI** — full config of all models in one table, live tok/s while streaming, stats panel.
-- **Two languages** — English and Chinese UI, switch any time with `t` in the TUI or `LLMTAP_LANG`.
-- **Works everywhere** — OpenAI, DeepSeek, Moonshot, Qwen, OpenRouter, Ollama, LM Studio, vLLM, or any relay.
+- **Latency** — TTFT, time to first chunk, total time, inter-token latency with p50/p95.
+- **Throughput** — decode speed (tok/s), overall speed, input/output tokens, straight from `usage`.
+- **Bench** — N requests with configurable concurrency. Mean / p50 / p95 / min / max / stdev.
+- **Downgrade probe** — 6 fixed checks, regex-scored, no judge model. Score 0–100.
+- **Relay scan** — discover every model on an endpoint via `GET /models`, test each one.
+- **Cost** — optional per-model pricing, cost per request and per run.
+- **TUI** — every model and every setting in one table, live tok/s while streaming.
+- **Bilingual** — English and Chinese UI. Switch with `t` in the TUI or `LLMTAP_LANG`.
 
 ## Install
 
-Python 3.10+.
+Python 3.10 or newer.
 
 ```bash
 uv tool install llmtap   # recommended
@@ -40,36 +56,33 @@ pip install llmtap
 From source:
 
 ```bash
-git clone https://github.com/USERNAME/llmtap && cd llmtap
+git clone https://github.com/Teyeray/llmtap && cd llmtap
 uv venv && uv pip install -e .
 uv run llmtap --help
 ```
 
-## Quick start — no config needed
+## Quick start
+
+A bare URL works as the first argument. No config file needed.
 
 ```bash
-llmtap test https://api.deepseek.com/v1 -k sk-xxx -m deepseek-chat   # or
+llmtap test https://api.deepseek.com/v1 -k sk-xxx -m deepseek-chat   # one request
 llmtap test https://api.deepseek.com/v1 -k sk-xxx                    # picks a model
 llmtap scan https://some-relay.com/v1 -k sk-xxx                      # scan every model
 llmtap test http://127.0.0.1:11434/v1 -m qwen2.5:7b                  # local Ollama
 ```
 
-A bare URL works as the first argument. `-m` is optional: when you omit it,
-llmtap lists the endpoint models and asks you to pick one. Keys come from `-k`,
-`--api-key-env NAME`, `$LLMTAP_API_KEY` or `$OPENAI_API_KEY`.
+`-m` is optional. When you omit it, llmtap lists the endpoint models and asks you to pick one. Keys come from `-k`, `--api-key-env NAME`, `$LLMTAP_API_KEY`, or `$OPENAI_API_KEY`.
 
-Save an endpoint for later, no TOML editing:
+Save an endpoint for later, without editing TOML:
 
 ```bash
-llmtap init                              # create ~/.config/llmtap/config.toml
+llmtap init          # create ~/.config/llmtap/config.toml
 llmtap add deepseek -u https://api.deepseek.com/v1 -k sk-xxx
 llmtap test deepseek
 ```
 
-When you omit PROFILE, llmtap uses the only configured profile, else the
-`[defaults] profile` entry, else it asks you to pick.
-
-![llmtap test](docs/img/test.svg)
+<p align="center"><img src="docs/img/test.png" alt="llmtap test" width="900"></p>
 
 ## Config
 
@@ -80,7 +93,7 @@ Search order: `--config`, `$LLMTAP_CONFIG`, `./llmtap.toml`, `~/.config/llmtap/c
 prompt = "Count from 1 to 20 slowly."
 max_tokens = 512
 temperature = 0.7
-profile = "deepseek"              # used when PROFILE is omitted
+profile = "deepseek"               # used when PROFILE is omitted
 
 [profiles.deepseek]                # one endpoint, one model
 base_url = "https://api.deepseek.com/v1"
@@ -97,9 +110,9 @@ input = 0.27
 output = 1.10
 ```
 
-With `models`, profiles expand to `kimi/kimi-k2-0905-preview` etc. Unique prefixes work on the command line: `llmtap test kimi/k2`.
+With `models`, a profile expands to `kimi/kimi-k2-0905-preview` and so on. Unique prefixes work on the command line: `llmtap test kimi/k2`. When you omit PROFILE, llmtap uses the only profile, else the `[defaults] profile` entry, else it asks.
 
-![llmtap list](docs/img/list.svg)
+<p align="center"><img src="docs/img/list.png" alt="llmtap list" width="900"></p>
 
 ## Commands
 
@@ -114,13 +127,13 @@ With `models`, profiles expand to `kimi/kimi-k2-0905-preview` etc. Unique prefix
 | `llmtap test PROFILE` | one request, all metrics, response preview |
 | `llmtap bench PROFILE -n 10 -c 2` | load bench with full statistics |
 | `llmtap bench --all` | bench every profile, comparison table |
-| `llmtap probe PROFILE` | downgrade probe, 6 checks, score 0-100 |
+| `llmtap probe PROFILE` | downgrade probe, 6 checks, score 0–100 |
 | `llmtap scan PROFILE` | scan every model on the endpoint |
 | `llmtap tui` | interactive TUI |
 
-PROFILE can be a profile name, a unique prefix, or a bare URL. Common options: `-u` URL, `-m` model, `-k` key, `-p` prompt, `--max-tokens`, `--temperature`, `--no-stream`, `--full`.
+PROFILE is a profile name, a unique prefix, or a bare URL. Common options: `-u` URL, `-m` model, `-k` key, `-p` prompt, `--max-tokens`, `--temperature`, `--no-stream`, `--full`.
 
-![llmtap bench](docs/img/bench.svg)
+<p align="center"><img src="docs/img/bench.png" alt="llmtap bench" width="900"></p>
 
 ## Metrics
 
@@ -128,54 +141,58 @@ PROFILE can be a profile name, a unique prefix, or a bare URL. Common options: `
 |---|---|
 | time to headers | request sent to response headers received |
 | time to first chunk | first SSE data chunk |
-| TTFT | first token (content or reasoning). What the user waits |
-| ITL | gap between two tokens. High p95 means stutter |
+| TTFT | first token (content or reasoning). What the user waits for |
+| ITL | gap between two tokens. A high p95 means stutter |
 | decode speed | tok/s after the first token |
 | overall speed | tok/s over the whole request |
-| tokens in/out | from `usage` when present, else estimated (marked) |
+| tokens in/out | from `usage` when present, else estimated (marked as such) |
 | cost | from the optional pricing table |
 
-## How the downgrade probe works
+## Probe: is this really the model I paid for?
 
-Six fixed English questions, each with exactly one checkable answer. No judge model — answers are matched by string and regex rules. `temperature=0`, non-stream, fixed `max_tokens`, so runs are comparable.
+Six fixed English questions, each with exactly one checkable answer. Answers are matched by string and regex rules, so no judge model is needed. `temperature=0`, non-stream, fixed `max_tokens`: runs stay comparable.
 
 | Check | Weight | Pass rule |
 |---|---|---|
-| Instruction following (reply only APPLE) | 10 | equals APPLE after cleanup |
-| Base64 decode | 15 | contains decoded text |
+| Instruction following (reply only APPLE) | 10 | equals `APPLE` after cleanup |
+| Base64 decode | 15 | contains the decoded text |
 | Needle in haystack (4-digit code in filler) | 20 | contains the code |
-| Bat and ball ($1.10 trap) | 15 | 0.05 / 5 cents |
-| Multiplication 17 x 24 | 20 | exactly 408 |
-| Set dedup [1,1,2,3,3,3] | 20 | exactly 3 |
+| Bat and ball (the $1.10 trap) | 15 | `0.05` or `5 cents` |
+| Multiplication 17 × 24 | 20 | exactly `408` |
+| Set dedup `[1,1,2,3,3,3]` | 20 | exactly `3` |
 
-Score 85+ = pass, 60-84 = suspect, below 60 = strong signs of downgrade. Any request failure (401/429/5xx/timeout) marks the run inconclusive — not scored. `--strict` exits 1 below 85 for CI.
+Score 85+ = pass, 60–84 = suspect, below 60 = strong signs of downgrade. Any request failure (401/429/5xx/timeout) marks the run inconclusive and it is not scored. `--strict` exits 1 below 85, for CI.
 
 Honest limitation: the checks are easy. Any cheap model can pass them all. A pass means "no obvious downgrade", not "this really is the flagship model".
 
-![llmtap probe](docs/img/probe.svg)
+<p align="center"><img src="docs/img/probe.png" alt="llmtap probe" width="900"></p>
 
-## How the relay scan works
+## Scan: what is actually on this endpoint?
 
-`GET /models` lists every model id on the endpoint. Each model gets one minimal streaming request (fixed prompt, `max_tokens=16`). The scan records status, TTFT, total time, tok/s and errors, then prints: alive count, TTFT p50/p95, dead model list. Use `--only` to filter by substring, `--limit` to cap the count, `-c` for concurrency. Endpoints that reject `temperature` or `max_tokens` (o-series) are retried with defaults.
+`GET /models` lists every model id. Each model then gets one minimal streaming request (fixed prompt, `max_tokens=16`). The scan records status, TTFT, total time, tok/s and errors. Output: alive count, TTFT p50/p95, dead model list.
 
-![llmtap scan](docs/img/scan.svg)
+Use `--only` to filter by substring, `--limit` to cap the count, `-c` for concurrency. Endpoints that reject `temperature` or `max_tokens` (o-series style) are retried with defaults.
+
+<p align="center"><img src="docs/img/scan.png" alt="llmtap scan" width="900"></p>
 
 ## TUI
 
 ```bash
-llmtap tui
+llmtap
 ```
+
+<p align="center"><img src="docs/img/tui.png" alt="llmtap TUI" width="980"></p>
 
 | Key | Action |
 |---|---|
 | `r` | single test, live tok/s on the right |
-| `b` | bench x5, stats table |
+| `b` | bench ×5, stats table |
 | `p` | downgrade probe |
 | `s` | scan every model on the endpoint |
 | `Enter` | full config popup |
 | `m` | list endpoint models |
 | `l` | reload config |
-| `t` | switch language (English/Chinese) |
+| `t` | switch language (English / Chinese) |
 | `q` | quit |
 
 ## Language
@@ -186,38 +203,51 @@ English by default. Chinese when the system locale is Chinese.
 export LLMTAP_LANG=zh   # or en
 ```
 
-CLI `--help` text stays English. All tables, verdicts and TUI text switch.
+CLI `--help` text stays English. Tables, verdicts and the whole TUI follow the setting.
 
-## Offline demo
+## Try it offline
 
-No key needed:
+No API key, no network:
 
 ```bash
 python scripts/fake_server.py &
 export LLMTAP_CONFIG=tests/local.toml
 llmtap list
 llmtap test local7b
-llmtap bench local7b --n 5 -c 2
+llmtap bench local7b -n 5 -c 2
 llmtap probe local7b
 llmtap scan local7b
-llmtap tui
+llmtap
 ```
 
 Shape the fake latency with `FAKE_TTFT_MS=200 FAKE_ITL_MS=30 python scripts/fake_server.py`.
 
-## Comparison
+## How it compares
 
 | Tool | Perf stats | Downgrade probe | Relay scan | TUI | Multi-endpoint config |
 |---|---|---|---|---|---|
-| llmtap | yes | yes | yes | yes | yes |
-| token-speed-tester | yes | no | no | no | no |
-| llm-relay-tester | partial | no | yes | no | partial |
-| llmprobe | no | yes | no | no | no |
+| **llmtap** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [token-speed-tester](https://github.com/Cansiny0320/token-speed-tester) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| [llm-relay-tester](https://github.com/WJAnnie/llm-relay-tester) | partial | ❌ | ✅ | ❌ | partial |
+| [cocodot-llmprobe](https://github.com/cocodot2026/cocodot-llmprobe) | ❌ | ✅ | ❌ | ❌ | ❌ |
+| [LMeterX](https://github.com/MigoXLab/LMeterX) | ✅ | ❌ | ❌ | ❌ | ✅ |
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and new probe checks are welcome.
+Bug reports, new probe checks and translations are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+```bash
+uv venv && uv pip install -e . --group dev
+uv run pytest -q          # runs against a local fake server, no key needed
+uv run python scripts/make_docs.py   # regenerate docs/img
+```
+
+## Star history
+
+<a href="https://star-history.com/#Teyeray/llmtap&Date">
+  <img src="https://api.star-history.com/svg?repos=Teyeray/llmtap&type=Date" alt="Star history" width="700">
+</a>
 
 ## License
 
-MIT
+MIT © 2026 llmtap contributors

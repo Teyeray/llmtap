@@ -23,6 +23,7 @@ from .probe import probe_tables, run_probe
 from .report import bench_tables, single_result_table, target_detail
 from .scan import scan_endpoint, scan_tables
 from .stats import aggregate, apply_cost
+from .theme import ACCENT, BAD, DIM, OK, tui_theme
 
 CSS = """
 #table { height: 45%; }
@@ -76,6 +77,10 @@ class LlmtapApp(App[None]):
 
     def __init__(self, config_path: str | None = None) -> None:
         super().__init__()
+        theme = tui_theme()
+        if theme is not None:
+            self.register_theme(theme)
+        self.theme = "llmtap"
         self.config_path = config_path
         self.targets: list[ModelTarget] = []
         self.busy = False
@@ -116,11 +121,11 @@ class LlmtapApp(App[None]):
             self.targets = load_targets(self.config_path)
         except ConfigError as e:
             self.targets = []
-            self.log_line(f"[red]{t('tui.config_error', msg=e)}[/red]")
+            self.log_line(f"[{BAD}]{t('tui.config_error', msg=e)}[/]")
             return
         self._build_table()
         src = self.targets[0].source
-        self.log_line(f"[dim]{t('tui.loaded', n=len(self.targets), src=src)}[/dim]")
+        self.log_line(f"[{DIM}]{t('tui.loaded', n=len(self.targets), src=src)}[/]")
 
     # ---------- helpers ----------
 
@@ -199,23 +204,23 @@ class LlmtapApp(App[None]):
             line = (f"[b]{target.profile}[/b]  "
                     f"{data['tokens']} tok  "
                     f"{data['elapsed_ms']:.0f} ms  "
-                    f"[cyan]{data['tps']:.1f} tok/s[/cyan]")
+                    f"[{ACCENT}]{data['tps']:.1f} tok/s[/]")
             self.show_stats(Panel(Text.from_markup(line)))
 
         result = await run_chat(target, on_event=on_event)
         apply_cost([result], target)
         self.show_stats(single_result_table(result, target))
-        mark = f"[green]{t('n.ok')}[/green]" if result.ok \
-            else f"[red]{t('n.failed')}[/red]"
+        mark = f"[{OK}]{t('n.ok')}[/]" if result.ok \
+            else f"[{BAD}]{t('n.failed')}[/]"
         self.log_line(f"{target.profile}: {mark} "
                       f"ttft={result.ttft_ms or 0:.0f}ms "
                       f"total={result.total_ms or 0:.0f}ms")
         if result.ok:
             preview = result.text[:200] \
                 or f"({result.reasoning_chars} reasoning chars)"
-            self.log_line(f"[dim]{preview}[/dim]")
+            self.log_line(f"[{DIM}]{preview}[/]")
         elif result.error:
-            self.log_line(f"[red]{result.error}[/red]")
+            self.log_line(f"[{BAD}]{result.error}[/]")
         self.busy = False
         self.sub_title = t("tui.subtitle")
 
@@ -227,7 +232,7 @@ class LlmtapApp(App[None]):
         def on_progress(i: int, r) -> None:
             done[0] += 1
             mark = t("n.ok") if r.ok else t("n.failed")
-            self.log_line(f"[dim]{done[0]}/{BENCH_N}[/dim] {mark} "
+            self.log_line(f"[{DIM}]{done[0]}/{BENCH_N}[/] {mark} "
                           f"ttft={r.ttft_ms or 0:.0f}ms "
                           f"total={r.total_ms or 0:.0f}ms")
 
@@ -257,7 +262,7 @@ class LlmtapApp(App[None]):
             else:
                 mark = t("probe.fail")
             ms_s = f" ({cr.ms:.0f} ms)" if cr.ms else ""
-            self.log_line(f"[dim]{done[0]}/6[/dim] {cr.name}: "
+            self.log_line(f"[{DIM}]{done[0]}/6[/] {cr.name}: "
                           f"{mark}{ms_s}")
 
         report = await run_probe(target, on_progress=on_progress)
@@ -280,7 +285,7 @@ class LlmtapApp(App[None]):
             done[0] += 1
             mark = t("scan.ok") if row.ok else t("scan.fail")
             ttft = f"{row.ttft_ms:.0f}ms" if row.ttft_ms is not None else "-"
-            self.log_line(f"[dim]{done[0]}[/dim] {mark} {row.model} "
+            self.log_line(f"[{DIM}]{done[0]}[/] {mark} {row.model} "
                           f"ttft={ttft}")
 
         report = await scan_endpoint(target, concurrency=4,
@@ -289,7 +294,7 @@ class LlmtapApp(App[None]):
         self.log_line(t("tui.scan_done", host=f"[b]{target.host}[/b]",
                         ok=len(report.alive), n=len(report.rows)))
         if report.fetch_error:
-            self.log_line(f"[red]{report.fetch_error}[/red]")
+            self.log_line(f"[{BAD}]{report.fetch_error}[/]")
         self.busy = False
         self.sub_title = t("tui.subtitle")
 
@@ -298,7 +303,7 @@ class LlmtapApp(App[None]):
         self.sub_title = f"{t('tui.getting_models', host=target.host)}…"
         status, ids, err = await list_models(target)
         if err:
-            self.log_line(f"[red]{err}[/red]")
+            self.log_line(f"[{BAD}]{err}[/]")
         else:
             self.log_line(t("tui.models_done",
                             host=f"[b]{target.host}[/b]", n=len(ids)))

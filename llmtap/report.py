@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
@@ -10,6 +11,7 @@ from rich.text import Text
 from .client import RequestResult
 from .config import ModelTarget
 from .i18n import t
+from .theme import ACCENT, BAD, HEADER, OK
 from .stats import Agg, percentile
 
 NA = "-"
@@ -33,8 +35,8 @@ def _row(s: dict | None, nd: int = 0) -> list[str]:
 
 def targets_table(targets: list[ModelTarget]) -> Table:
     """Every model with every key setting, one row per target."""
-    table = Table(title=t("report.configured_models"), box=None,
-                  header_style="bold cyan")
+    table = Table(title=t("report.configured_models"), box=box.SIMPLE_HEAD,
+                  header_style=HEADER)
     for key in ("col.profile", "col.model", "col.base_url", "col.api_key",
                 "col.temp", "col.max_tok", "col.timeout", "col.price_in",
                 "col.price_out"):
@@ -57,7 +59,7 @@ def targets_table(targets: list[ModelTarget]) -> Table:
 def target_detail(target: ModelTarget) -> Panel:
     """Full config of one target, API key value removed."""
     table = Table.grid(padding=(0, 2))
-    table.add_column(style="cyan", justify="right")
+    table.add_column(style=HEADER, justify="right")
     table.add_column()
     for key, value in target.safe_dict().items():
         if value in (None, "", {}, []):
@@ -65,12 +67,12 @@ def target_detail(target: ModelTarget) -> Panel:
         table.add_row(key, str(value))
     return Panel(table, title=t("report.config_of", profile=target.profile),
                  subtitle=t("report.source", src=target.source or NA),
-                 border_style="cyan")
+                 border_style=ACCENT)
 
 
 def single_result_table(r: RequestResult, target: ModelTarget) -> Table:
     table = Table(title=t("report.single_title", profile=target.profile),
-                  box=None, header_style="bold cyan")
+                  box=box.SIMPLE_HEAD, header_style=HEADER)
     table.add_column(t("report.metric"))
     table.add_column(t("col.value"), justify="right")
     table.add_column(t("col.note"))
@@ -108,14 +110,14 @@ def single_result_table(r: RequestResult, target: ModelTarget) -> Table:
 def response_preview(r: RequestResult, width: int = 76,
                      limit: int = 500) -> Panel:
     if r.error and not r.ok:
-        body = Text(r.error, style="bold red")
+        body = Text(r.error, style=BAD)
     else:
         text = r.text if r.text else f"({r.reasoning_chars} reasoning chars)"
         text = text if len(text) <= limit else text[:limit] + " …"
         body = Text(text)
     title = t("report.response") if r.ok else t("report.error")
     return Panel(body, title=title,
-                 border_style="green" if r.ok else "red",
+                 border_style=OK if r.ok else BAD,
                  width=min(width, 90))
 
 
@@ -125,7 +127,7 @@ def bench_tables(agg: Agg, target: ModelTarget, n: int, concurrency: int,
     mode = t("report.mode_stream" if stream else "report.mode_nonstream")
     table = Table(title=t("report.bench_title", profile=target.profile, n=n,
                           c=concurrency, mode=mode),
-                  box=None, header_style="bold cyan")
+                  box=box.SIMPLE_HEAD, header_style=HEADER)
     table.add_column(t("report.metric"))
     for col in ("mean", "p50", "p95", "min", "max"):
         table.add_column(col, justify="right")
@@ -135,7 +137,7 @@ def bench_tables(agg: Agg, target: ModelTarget, n: int, concurrency: int,
     table.add_row(t("b.decode"), *_row(agg.tps, nd=1))
     table.add_row(t("b.out_tokens"), *_row(agg.out_tokens, nd=0))
 
-    s = Table(box=None, show_header=False)
+    s = Table(box=box.SIMPLE_HEAD, show_header=False)
     s.add_column()
     s.add_column(justify="right")
     s.add_row(t("b.ok_total"), f"{agg.ok}/{agg.n}")
@@ -148,15 +150,15 @@ def bench_tables(agg: Agg, target: ModelTarget, n: int, concurrency: int,
     parts: list = [table, s]
     if agg.errors:
         err_list = "\n".join(dict.fromkeys(agg.errors))
-        parts.append(Panel(Text(err_list, style="red"),
+        parts.append(Panel(Text(err_list, style=BAD),
                            title=t("report.errors")))
     return Group(*parts)
 
 
 def compare_table(rows: list[tuple[str, Agg]]) -> Table:
     """One row per profile for `bench --all` runs."""
-    table = Table(title=t("report.comparison"), box=None,
-                  header_style="bold cyan")
+    table = Table(title=t("report.comparison"), box=box.SIMPLE_HEAD,
+                  header_style=HEADER)
     for key in ("col.profile", "col.ok", "col.err_pct", "col.ttft_p50",
                 "col.total_p50", "col.tps_p50", "col.cost"):
         table.add_column(t(key),
@@ -175,8 +177,8 @@ def compare_table(rows: list[tuple[str, Agg]]) -> Table:
 
 
 def models_table(ids: list[str]) -> Table:
-    table = Table(title=t("report.get_models"), box=None,
-                  header_style="bold cyan")
+    table = Table(title=t("report.get_models"), box=box.SIMPLE_HEAD,
+                  header_style=HEADER)
     table.add_column(t("col.model_id"))
     for i in ids:
         table.add_row(i)

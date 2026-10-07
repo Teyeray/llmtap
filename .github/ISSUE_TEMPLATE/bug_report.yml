@@ -1,0 +1,29 @@
+name: Bug report
+description: Something does not work.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Paste the command and its output. Remove your API key.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint
+      description: Provider or relay. Base URL if it is public.
+  - type: input
+    id: version
+    attributes:
+      label: llmtap version
+      placeholder: output of `llmtap version`
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS and Python
+      placeholder: macOS 15, Python 3.12

@@ -1,0 +1,21 @@
+name: New probe check
+description: Propose a new downgrade check.
+labels: [probe]
+body:
+  - type: textarea
+    id: prompt
+    attributes:
+      label: Prompt
+      description: English. One checkable answer.
+    validations:
+      required: true
+  - type: input
+    id: answer
+    attributes:
+      label: Expected answer and match rule
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why a weak model fails this

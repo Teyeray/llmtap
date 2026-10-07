@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.4.0] - 2026-10-07
 
 ### Added
+- Shared color theme for CLI tables and the TUI.
+- Demo GIF, banner and PNG screenshots in the README.
+- GitHub issue and PR templates, Dependabot.
 - Bare URL as the first argument: `llmtap scan https://host/v1 -k KEY`.
 - `-k/--api-key` flag. Key fallback to `$LLMTAP_API_KEY` and
   `$OPENAI_API_KEY`.

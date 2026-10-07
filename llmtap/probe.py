@@ -14,6 +14,7 @@ import random
 import re
 from dataclasses import dataclass, field
 
+from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
@@ -22,6 +23,7 @@ from rich.text import Text
 from .client import RequestResult, chat_with_fallback
 from .config import ModelTarget
 from .i18n import t
+from .theme import HEADER, VERDICT
 
 PROBE_MAX_TOKENS = 2048
 
@@ -218,8 +220,7 @@ async def run_probe(target: ModelTarget, *, checks: list[dict] | None = None,
 
 # --- render ----------------------------------------------------------------
 
-_VERDICT_STYLE = {"ok": "green", "partial": "yellow", "fail": "red",
-                  "inconclusive": "red"}
+_VERDICT_STYLE = VERDICT
 
 
 def _mark(cr: CheckResult) -> str:
@@ -233,7 +234,7 @@ def _mark(cr: CheckResult) -> str:
 def probe_tables(report: ProbeReport, target: ModelTarget) -> Group:
     t_ = Table(title=t("probe.title", profile=target.profile,
                        n=len(report.results)),
-               box=None, header_style="bold cyan")
+               box=box.SIMPLE_HEAD, header_style=HEADER)
     for key in ("col.check", "col.weight", "col.result", "col.latency",
                 "col.expected", "col.got"):
         t_.add_column(t(key))

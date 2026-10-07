@@ -18,6 +18,7 @@ from .config import (USER_CONFIG_PATH, ConfigError, ModelTarget, adhoc_target,
                      append_profile, find_config, load_targets, pick_target,
                      write_template)
 from .i18n import t
+from .theme import ACCENT, BAD, DIM, OK, WARN
 from .probe import probe_tables, run_probe
 from .report import (bench_tables, compare_table, models_table,
                      response_preview, single_result_table, target_detail,
@@ -69,7 +70,7 @@ def _choose(items: list[str], title: str) -> str:
                             names=", ".join(items)))
     console.print(f"{title}:")
     for i, name in enumerate(items, 1):
-        console.print(f"  [cyan]{i}[/cyan]. {name}")
+        console.print(f"  [{ACCENT}]{i}[/]. {name}")
     choice = Prompt.ask(t("cli.pick_prompt"), default="1")
     try:
         idx = int(choice)
@@ -81,7 +82,7 @@ def _choose(items: list[str], title: str) -> str:
 
 
 def _config_error(exc: ConfigError) -> None:
-    console.print(f"[red]{t('cli.config_error', msg=exc)}[/red]")
+    console.print(f"[{BAD}]{t('cli.config_error', msg=exc)}[/]")
     raise typer.Exit(2)
 
 
@@ -164,7 +165,7 @@ def _pick(profile: str | None = None, base_url: str | None = None,
 
 def _error_hint(result) -> None:
     if result.status in (401, 403) and not result.ok:
-        console.print(f"[yellow]{t('cli.hint_key')}[/yellow]")
+        console.print(f"[{WARN}]{t('cli.hint_key')}[/]")
 
 
 # ---- commands -------------------------------------------------------------
@@ -186,7 +187,7 @@ def _root(ctx: typer.Context) -> None:
         LlmtapApp(config_path=str(found)).run()
         return
     console.print(ctx.get_help())
-    console.print(f"\n[yellow]{t('cli.no_config_hint')}[/yellow]")
+    console.print(f"\n[{WARN}]{t('cli.no_config_hint')}[/]")
 
 
 @app.command("list")
@@ -197,7 +198,7 @@ def list_cmd(config: Optional[str] = CFG) -> None:
     note = t("cli.n_targets", n=len(targets), src=targets[0].source)
     if any(x.default for x in targets):
         note += f"  ·  {t('cli.default_note')}"
-    console.print(f"[dim]{note}[/dim]")
+    console.print(f"[{DIM}]{note}[/]")
 
 
 @app.command()
@@ -211,7 +212,7 @@ def show(profile: Optional[str] = PROFILE,
     target = _pick(profile, base_url, model, api_key, api_key_env, config)
     console.print(target_detail(target))
     if target.source == "adhoc":
-        console.print(f"[dim]{t('cli.adhoc_no_config')}[/dim]")
+        console.print(f"[{DIM}]{t('cli.adhoc_no_config')}[/]")
 
 
 @app.command()
@@ -225,11 +226,11 @@ def models(profile: Optional[str] = PROFILE,
                    need_model=False)
     status, ids, err = asyncio.run(list_models(target))
     if err:
-        console.print(f"[red]{t('cli.request_failed')}[/red] {err}")
+        console.print(f"[{BAD}]{t('cli.request_failed')}[/] {err}")
         _error_hint(type("R", (), {"status": status, "ok": False})())
         raise typer.Exit(1)
     console.print(models_table(ids))
-    console.print(f"[dim]{t('cli.n_models', n=len(ids), url=target.base_url, status=status)}[/dim]")
+    console.print(f"[{DIM}]{t('cli.n_models', n=len(ids), url=target.base_url, status=status)}[/]")
 
 
 @app.command()
@@ -320,7 +321,7 @@ def probe(profile: Optional[str] = PROFILE,
         def on_progress(cr) -> None:
             mark = t("probe.pass") if cr.passed else t("probe.fail")
             status.update(f"{t('cli.probing', name=target.profile)} "
-                          f"[dim]({cr.name}: {mark})[/dim]")
+                          f"[{DIM}]({cr.name}: {mark})[/]")
         report = asyncio.run(run_probe(target, timeout=timeout,
                                        on_progress=on_progress))
     console.print(probe_tables(report, target))
@@ -352,7 +353,7 @@ def scan(profile: Optional[str] = PROFILE,
             done[0] += 1
             mark = t("scan.ok") if row.ok else t("scan.fail")
             status.update(f"{t('cli.scanning', host=target.host)} "
-                          f"[dim]({done[0]}: {mark} {row.model})[/dim]")
+                          f"[{DIM}]({done[0]}: {mark} {row.model})[/]")
         report = asyncio.run(scan_endpoint(
             target, only=only, limit=limit, concurrency=concurrency,
             timeout=timeout, on_progress=on_progress))
@@ -369,7 +370,7 @@ def tui(config: Optional[str] = CFG) -> None:
     try:
         from .tui import LlmtapApp
     except ImportError as exc:
-        console.print(f"[red]{t('cli.tui_missing')}[/red] {exc}")
+        console.print(f"[{BAD}]{t('cli.tui_missing')}[/] {exc}")
         raise typer.Exit(1)
     LlmtapApp(config_path=config).run()
 
@@ -382,9 +383,9 @@ def init(path: Optional[str] = typer.Option(None, "--path",
     """Create a starter config file."""
     dest = Path(path).expanduser() if path else USER_CONFIG_PATH
     if not write_template(dest, force=force):
-        console.print(f"[yellow]{t('cli.init_exists', path=dest)}[/yellow]")
+        console.print(f"[{WARN}]{t('cli.init_exists', path=dest)}[/]")
         raise typer.Exit(1)
-    console.print(f"[green]{t('cli.init_done', path=dest)}[/green]")
+    console.print(f"[{OK}]{t('cli.init_done', path=dest)}[/]")
 
 
 @app.command()
@@ -408,7 +409,7 @@ def add(name: str = typer.Argument(..., help="New profile name."),
         listing = adhoc_target(base_url, "", env, api_key=key)
         _, ids, err = asyncio.run(list_models(listing))
         if err or not ids:
-            console.print(f"[red]{t('err.no_models', url=base_url)}[/red]")
+            console.print(f"[{BAD}]{t('err.no_models', url=base_url)}[/]")
             raise typer.Exit(1)
         models = [ids[0]] if len(ids) == 1 else [
             _choose(ids, t("cli.pick_model"))]
@@ -417,12 +418,12 @@ def add(name: str = typer.Argument(..., help="New profile name."),
                        api_key_env=api_key_env or "",
                        api_key=api_key or "")
     except ConfigError as exc:
-        console.print(f"[red]{exc}[/red]")
+        console.print(f"[{BAD}]{exc}[/]")
         raise typer.Exit(1)
-    console.print(f"[green]{t('cli.add_done', name=name, path=path)}[/green]")
+    console.print(f"[{OK}]{t('cli.add_done', name=name, path=path)}[/]")
     if api_key:
-        console.print(f"[yellow]{t('cli.key_plain_text', path=path)}[/yellow]")
-    console.print(f"[dim]llmtap test {name}[/dim]")
+        console.print(f"[{WARN}]{t('cli.key_plain_text', path=path)}[/]")
+    console.print(f"[{DIM}]llmtap test {name}[/]")
 
 
 @app.command()

@@ -5,7 +5,7 @@ Thanks for your interest in llmtap.
 ## Dev setup
 
 ```bash
-git clone https://github.com/USERNAME/llmtap && cd llmtap
+git clone https://github.com/Teyeray/llmtap && cd llmtap
 uv venv && uv pip install -e . --group dev
 uv run pytest -q
 ```

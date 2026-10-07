@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from dataclasses import dataclass, field
 
 import httpx
+from rich import box
 from rich.console import Group
 from rich.panel import Panel
 from rich.table import Table
@@ -15,6 +15,7 @@ from rich.text import Text
 from .client import chat_with_fallback, list_models
 from .config import ModelTarget
 from .i18n import t
+from .theme import BAD, HEADER, OK, WARN
 from .stats import percentile
 
 SCAN_PROMPT = "Reply with exactly: OK"
@@ -100,12 +101,12 @@ def scan_tables(report: ScanReport, target: ModelTarget) -> Group:
         return Group(Panel(Text(t("scan.fetch_failed",
                                   status=report.fetch_status,
                                   error=report.fetch_error),
-                                style="bold red"),
+                                style=BAD),
                            title=t("scan.title_short", host=target.host)))
 
     table = Table(title=t("scan.title", host=target.host,
                           n=len(report.rows), m=report.listed),
-                  box=None, header_style="bold cyan")
+                  box=box.SIMPLE_HEAD, header_style=HEADER)
     for key in ("col.model", "col.status", "col.ttft", "col.tps",
                 "col.out_tok", "col.error"):
         table.add_column(t(key))
@@ -132,6 +133,6 @@ def _scan_summary(report: ScanReport) -> Panel:
     dead = [r.model for r in report.rows if not r.ok]
     if dead:
         lines.append(t("scan.dead", models=", ".join(dead)))
-    style = "green" if len(alive) == len(report.rows) and alive else \
-        "yellow" if alive else "red"
+    style = OK if len(alive) == len(report.rows) and alive else \
+        WARN if alive else BAD
     return Panel(Text("\n".join(lines)), border_style=style)

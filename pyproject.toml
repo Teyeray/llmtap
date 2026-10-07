@@ -27,10 +27,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/USERNAME/llmtap"
-Repository = "https://github.com/USERNAME/llmtap"
-Issues = "https://github.com/USERNAME/llmtap/issues"
-Changelog = "https://github.com/USERNAME/llmtap/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Teyeray/llmtap"
+Repository = "https://github.com/Teyeray/llmtap"
+Issues = "https://github.com/Teyeray/llmtap/issues"
+Changelog = "https://github.com/Teyeray/llmtap/blob/main/CHANGELOG.md"
 
 [project.scripts]
 llmtap = "llmtap.cli:main"

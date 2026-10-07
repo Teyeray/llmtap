@@ -26,7 +26,7 @@ DEFAULT_PROMPT = (
 
 USER_CONFIG_PATH = Path.home() / ".config" / "llmtap" / "config.toml"
 
-CONFIG_TEMPLATE = '''# llmtap config. Docs: https://github.com/USERNAME/llmtap
+CONFIG_TEMPLATE = '''# llmtap config. Docs: https://github.com/Teyeray/llmtap
 # Add a profile without editing this file:
 #   llmtap add myrelay -u https://host/v1 -k sk-xxx
 
