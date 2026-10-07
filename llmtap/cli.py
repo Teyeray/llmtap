@@ -63,15 +63,30 @@ def _resolve_key(api_key: str | None, key_env: str | None) -> tuple[str, str]:
     return "", ""
 
 
+def _interactive() -> bool:
+    """True when a human can answer a prompt.
+
+    Windows reports NUL as a tty, so stdout is checked as well.
+    """
+    try:
+        return sys.stdin.isatty() and sys.stdout.isatty()
+    except (AttributeError, ValueError):
+        return False
+
+
 def _choose(items: list[str], title: str) -> str:
     """Ask the user to pick one item by number."""
-    if not sys.stdin.isatty():
+    if not _interactive():
         raise ConfigError(t("err.pick_needs_tty", what=title,
                             names=", ".join(items)))
     console.print(f"{title}:")
     for i, name in enumerate(items, 1):
         console.print(f"  [{ACCENT}]{i}[/]. {name}")
-    choice = Prompt.ask(t("cli.pick_prompt"), default="1")
+    try:
+        choice = Prompt.ask(t("cli.pick_prompt"), default="1")
+    except (EOFError, KeyboardInterrupt):
+        raise ConfigError(t("err.pick_needs_tty", what=title,
+                            names=", ".join(items)))
     try:
         idx = int(choice)
         if not 1 <= idx <= len(items):
