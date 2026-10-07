@@ -191,9 +191,9 @@ def test_cli_help_is_bilingual() -> None:
         args = ["--help"] if cmd == "--help" else [cmd, "--help"]
         env = dict(os.environ, LLMTAP_LANG="en")
         out = subprocess.run(exe + args, env=env, capture_output=True,
-                             text=True, cwd=str(ROOT))
+                             text=True, encoding="utf-8", cwd=str(ROOT))
         assert en_needle in out.stdout, (cmd, out.stdout)
         env = dict(os.environ, LLMTAP_LANG="zh")
         out = subprocess.run(exe + args, env=env, capture_output=True,
-                             text=True, cwd=str(ROOT))
+                             text=True, encoding="utf-8", cwd=str(ROOT))
         assert zh_needle in out.stdout, (cmd, out.stdout)

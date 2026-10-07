@@ -439,7 +439,20 @@ def version() -> None:
     console.print(f"llmtap {__version__}")
 
 
+def _force_utf8_streams() -> None:
+    """Windows pipes default to a legacy code page. Chinese help text
+    then raises UnicodeEncodeError. Reconfigure the streams to UTF-8."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if stream is not None and stream.encoding and \
+                    stream.encoding.lower().replace("-", "") != "utf8":
+                stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
 def main() -> None:
+    _force_utf8_streams()
     app()
 
 
