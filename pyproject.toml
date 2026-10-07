@@ -1,6 +1,6 @@
 [project]
 name = "llmtap"
-version = "0.4.0"
+version = "0.5.0"
 description = "Terminal LLM API tester: TTFT, throughput, token stats and a TUI that shows every model config"
 readme = "README.md"
 license = { text = "MIT" }

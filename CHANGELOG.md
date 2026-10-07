@@ -3,6 +3,16 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-10-07
+
+### Added
+- TUI redesign in the style of mature Textual apps: one card per area
+  with rounded borders and titles, localized pane titles and footer.
+- Live tok/s sparkline during a test, progress bars for bench and
+  probe, and a full key guide behind the ? key.
+- `--help` output is now bilingual: it follows `LLMTAP_LANG` and the
+  system locale, like the rest of the UI.
+
 ## [0.4.0] - 2026-10-07
 
 ### Added

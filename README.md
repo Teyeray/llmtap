@@ -40,7 +40,7 @@ You pay for a flagship model on a relay. Is the relay really serving that model?
 - **Relay scan** — discover every model on an endpoint via `GET /models`, test each one.
 - **Cost** — optional per-model pricing, cost per request and per run.
 - **TUI** — every model and every setting in one table, live tok/s while streaming.
-- **Bilingual** — English and Chinese UI. Switch with `t` in the TUI or `LLMTAP_LANG`.
+- **Bilingual** — English and Chinese UI, `--help` included. Switch with `t` in the TUI or `LLMTAP_LANG`.
 
 ## Install
 
@@ -191,6 +191,7 @@ llmtap
 | `s` | scan every model on the endpoint |
 | `Enter` | full config popup |
 | `m` | list endpoint models |
+| `?` | full key guide |
 | `l` | reload config |
 | `t` | switch language (English / Chinese) |
 | `q` | quit |
@@ -203,7 +204,7 @@ English by default. Chinese when the system locale is Chinese.
 export LLMTAP_LANG=zh   # or en
 ```
 
-CLI `--help` text stays English. Tables, verdicts and the whole TUI follow the setting.
+Tables, verdicts, the TUI and the `--help` output all follow the setting.
 
 ## Try it offline
 

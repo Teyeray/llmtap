@@ -46,3 +46,18 @@ Enter
 Type "llmtap probe local7b"
 Enter
 Sleep 8s
+
+Type "clear"
+Enter
+
+Type "llmtap"
+Enter
+Sleep 1.5s
+Type "r"
+Sleep 3s
+Type "?"
+Sleep 1.5s
+Escape
+Sleep 0.5s
+Type "q"
+Sleep 0.5s

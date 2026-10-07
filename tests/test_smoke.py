@@ -163,6 +163,37 @@ def test_tui_headless() -> None:
         async with app.run_test() as pilot:
             await pilot.pause(0.3)
             assert app.targets, "targets not loaded in TUI"
+            # ? opens the key guide, escape closes it
+            await pilot.press("?")
+            await pilot.pause(0.2)
+            from llmtap.tui import HelpScreen
+            assert isinstance(app.screen, HelpScreen), type(app.screen)
+            await pilot.press("escape")
+            await pilot.pause(0.2)
+            # r runs a single test against the fake server
+            await pilot.press("r")
+            await pilot.pause(2.5)
+            assert not app.busy
             await pilot.press("q")
 
     asyncio.run(run())
+
+
+def test_cli_help_is_bilingual() -> None:
+    """--help follows LLMTAP_LANG, in the group and the subcommands."""
+    exe = [sys.executable, "-m", "llmtap.cli"]
+    cases = {
+        "--help": ("Terminal tester", "终端大模型 API 测试器"),
+        "bench": ("Run n requests", "请求次数"),
+        "probe": ("Downgrade probe", "降智检测"),
+    }
+    for cmd, (en_needle, zh_needle) in cases.items():
+        args = ["--help"] if cmd == "--help" else [cmd, "--help"]
+        env = dict(os.environ, LLMTAP_LANG="en")
+        out = subprocess.run(exe + args, env=env, capture_output=True,
+                             text=True, cwd=str(ROOT))
+        assert en_needle in out.stdout, (cmd, out.stdout)
+        env = dict(os.environ, LLMTAP_LANG="zh")
+        out = subprocess.run(exe + args, env=env, capture_output=True,
+                             text=True, cwd=str(ROOT))
+        assert zh_needle in out.stdout, (cmd, out.stdout)

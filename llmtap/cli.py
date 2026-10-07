@@ -27,24 +27,20 @@ from .scan import scan_endpoint, scan_tables
 from .stats import Agg, aggregate, apply_cost
 
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False,
-                  no_args_is_help=False)
+                  no_args_is_help=False, help=t("cli.h.app"))
 console = Console()
 
-CFG = typer.Option(None, "--config", help="Path to a config file.")
-PROFILE = typer.Argument(
-    None, help="Profile name, or a base URL such as https://host/v1.")
-BASE_URL = typer.Option(None, "-u", "--base-url", help="Endpoint base URL.")
-MODEL = typer.Option(None, "-m", "--model",
-                     help="Model id. Omit to pick from GET /models.")
-API_KEY = typer.Option(None, "-k", "--api-key",
-                       help="API key value, instead of an env var.")
-KEY_ENV = typer.Option(None, "--api-key-env",
-                       help="Name of the env var that holds the API key.")
-PROMPT = typer.Option(None, "-p", "--prompt", help="Prompt text.")
-MAX_TOK = typer.Option(None, "--max-tokens")
-TEMP = typer.Option(None, "--temperature")
+CFG = typer.Option(None, "--config", help=t("cli.h.config"))
+PROFILE = typer.Argument(None, help=t("cli.h.profile"))
+BASE_URL = typer.Option(None, "-u", "--base-url", help=t("cli.h.base_url"))
+MODEL = typer.Option(None, "-m", "--model", help=t("cli.h.model"))
+API_KEY = typer.Option(None, "-k", "--api-key", help=t("cli.h.api_key"))
+KEY_ENV = typer.Option(None, "--api-key-env", help=t("cli.h.key_env"))
+PROMPT = typer.Option(None, "-p", "--prompt", help=t("cli.h.prompt"))
+MAX_TOK = typer.Option(None, "--max-tokens", help=t("cli.h.max_tokens"))
+TEMP = typer.Option(None, "--temperature", help=t("cli.h.temperature"))
 STREAM = typer.Option(True, "--stream/--no-stream",
-                      help="Stream the response (default: on).")
+                      help=t("cli.h.stream"))
 
 
 def _is_url(s: str | None) -> bool:
@@ -187,10 +183,7 @@ def _error_hint(result) -> None:
 
 @app.callback(invoke_without_command=True)
 def _root(ctx: typer.Context) -> None:
-    """Terminal tester for LLM API endpoints. OpenAI-compatible.
-
-    Run with no command to open the TUI.
-    """
+    """Entry point. The group help text lives in cli.h.app."""
     if ctx.invoked_subcommand is not None:
         return
     try:
@@ -205,7 +198,7 @@ def _root(ctx: typer.Context) -> None:
     console.print(f"\n[{WARN}]{t('cli.no_config_hint')}[/]")
 
 
-@app.command("list")
+@app.command("list", help=t("cli.h.list"))
 def list_cmd(config: Optional[str] = CFG) -> None:
     """Show every configured model with every setting."""
     targets = _load(config)
@@ -216,7 +209,7 @@ def list_cmd(config: Optional[str] = CFG) -> None:
     console.print(f"[{DIM}]{note}[/]")
 
 
-@app.command()
+@app.command(help=t("cli.h.show"))
 def show(profile: Optional[str] = PROFILE,
          base_url: Optional[str] = BASE_URL,
          model: Optional[str] = MODEL,
@@ -230,7 +223,7 @@ def show(profile: Optional[str] = PROFILE,
         console.print(f"[{DIM}]{t('cli.adhoc_no_config')}[/]")
 
 
-@app.command()
+@app.command(help=t("cli.h.models"))
 def models(profile: Optional[str] = PROFILE,
            base_url: Optional[str] = BASE_URL,
            api_key: Optional[str] = API_KEY,
@@ -248,7 +241,7 @@ def models(profile: Optional[str] = PROFILE,
     console.print(f"[{DIM}]{t('cli.n_models', n=len(ids), url=target.base_url, status=status)}[/]")
 
 
-@app.command()
+@app.command(help=t("cli.h.test"))
 def test(profile: Optional[str] = PROFILE,
          base_url: Optional[str] = BASE_URL,
          model: Optional[str] = MODEL,
@@ -258,8 +251,7 @@ def test(profile: Optional[str] = PROFILE,
          max_tokens: Optional[int] = MAX_TOK,
          temperature: Optional[float] = TEMP,
          stream: bool = STREAM,
-         full: bool = typer.Option(False, "--full",
-                                   help="Print the whole response."),
+         full: bool = typer.Option(False, "--full", help=t("cli.h.full")),
          config: Optional[str] = CFG) -> None:
     """Run one request and print all metrics plus a response preview."""
     target = _pick(profile, base_url, model, api_key, api_key_env, config,
@@ -275,7 +267,7 @@ def test(profile: Optional[str] = PROFILE,
         raise typer.Exit(1)
 
 
-@app.command()
+@app.command(help=t("cli.h.bench"))
 def bench(profile: Optional[str] = PROFILE,
           base_url: Optional[str] = BASE_URL,
           model: Optional[str] = MODEL,
@@ -286,11 +278,11 @@ def bench(profile: Optional[str] = PROFILE,
           temperature: Optional[float] = TEMP,
           stream: bool = STREAM,
           n: int = typer.Option(8, "-n", "--n", min=1,
-                                help="Number of requests."),
+                                help=t("cli.h.n")),
           concurrency: int = typer.Option(1, "-c", "--concurrency", min=1,
-                                          help="Parallel requests."),
+                                          help=t("cli.h.concurrency")),
           all_profiles: bool = typer.Option(False, "--all",
-                                           help="Bench every configured profile."),
+                                           help=t("cli.h.all")),
           config: Optional[str] = CFG) -> None:
     """Run n requests and print aggregated statistics (mean/p50/p95/min/max)."""
     if all_profiles:
@@ -319,16 +311,16 @@ def bench(profile: Optional[str] = PROFILE,
         raise typer.Exit(1)
 
 
-@app.command()
+@app.command(help=t("cli.h.probe"))
 def probe(profile: Optional[str] = PROFILE,
           base_url: Optional[str] = BASE_URL,
           model: Optional[str] = MODEL,
           api_key: Optional[str] = API_KEY,
           api_key_env: Optional[str] = KEY_ENV,
           timeout: float = typer.Option(120.0, "--timeout",
-                                        help="Per-request timeout in seconds."),
+                                        help=t("cli.h.timeout")),
           strict: bool = typer.Option(False, "--strict",
-                                      help="Exit 1 when score is below 85."),
+                                      help=t("cli.h.strict")),
           config: Optional[str] = CFG) -> None:
     """Downgrade probe: 6 fixed checks, regex-scored, no judge model."""
     target = _pick(profile, base_url, model, api_key, api_key_env, config)
@@ -344,19 +336,19 @@ def probe(profile: Optional[str] = PROFILE,
         raise typer.Exit(1)
 
 
-@app.command()
+@app.command(help=t("cli.h.scan"))
 def scan(profile: Optional[str] = PROFILE,
          base_url: Optional[str] = BASE_URL,
          api_key: Optional[str] = API_KEY,
          api_key_env: Optional[str] = KEY_ENV,
          concurrency: int = typer.Option(4, "-c", "--concurrency", min=1,
-                                         help="Parallel model tests."),
+                                         help=t("cli.h.concurrency")),
          only: Optional[str] = typer.Option(None, "--only",
-                                            help="Only ids with this substring."),
+                                            help=t("cli.h.only")),
          limit: Optional[int] = typer.Option(None, "--limit",
-                                             help="Test at most N models."),
+                                             help=t("cli.h.limit")),
          timeout: float = typer.Option(20.0, "--timeout",
-                                       help="Per-request timeout in seconds."),
+                                       help=t("cli.h.timeout")),
          config: Optional[str] = CFG) -> None:
     """Scan a relay: GET /models, then test every model for TTFT and status."""
     target = _pick(profile, base_url, None, api_key, api_key_env, config,
@@ -379,7 +371,7 @@ def scan(profile: Optional[str] = PROFILE,
         raise typer.Exit(1)
 
 
-@app.command()
+@app.command(help=t("cli.h.tui"))
 def tui(config: Optional[str] = CFG) -> None:
     """Open the interactive TUI."""
     try:
@@ -390,11 +382,11 @@ def tui(config: Optional[str] = CFG) -> None:
     LlmtapApp(config_path=config).run()
 
 
-@app.command()
+@app.command(help=t("cli.h.init"))
 def init(path: Optional[str] = typer.Option(None, "--path",
-                                           help="Write here instead."),
+                                           help=t("cli.h.path")),
          force: bool = typer.Option(False, "--force",
-                                    help="Overwrite an existing file.")) -> None:
+                                    help=t("cli.h.force"))) -> None:
     """Create a starter config file."""
     dest = Path(path).expanduser() if path else USER_CONFIG_PATH
     if not write_template(dest, force=force):
@@ -403,11 +395,11 @@ def init(path: Optional[str] = typer.Option(None, "--path",
     console.print(f"[{OK}]{t('cli.init_done', path=dest)}[/]")
 
 
-@app.command()
-def add(name: str = typer.Argument(..., help="New profile name."),
+@app.command(help=t("cli.h.add"))
+def add(name: str = typer.Argument(..., help=t("cli.h.name")),
         base_url: str = typer.Option(..., "-u", "--base-url"),
         model: Optional[List[str]] = typer.Option(None, "-m", "--model",
-                                                 help="Repeat for many models."),
+                                                 help=t("cli.h.model")),
         api_key: Optional[str] = typer.Option(None, "-k", "--api-key"),
         api_key_env: Optional[str] = typer.Option(None, "--api-key-env"),
         config: Optional[str] = CFG) -> None:
@@ -441,7 +433,7 @@ def add(name: str = typer.Argument(..., help="New profile name."),
     console.print(f"[{DIM}]llmtap test {name}[/]")
 
 
-@app.command()
+@app.command(help=t("cli.h.version"))
 def version() -> None:
     """Print the version."""
     console.print(f"llmtap {__version__}")
