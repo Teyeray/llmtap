@@ -1,55 +1,67 @@
 # llmtap
 
-终端大模型 API 测试器。测任何 OpenAI 兼容端点。一条命令得到开发者关心的全部性能数据。
+**Terminal tester for LLM APIs.** Measure TTFT, throughput and token stats. Probe for model downgrade. Scan relay stations. One tool, any OpenAI-compatible endpoint.
 
-[![python](https://img.shields.io/badge/python-3.10%2B-blue)]()
-[![license](https://img.shields.io/badge/license-MIT-green)]()
+[![CI](https://github.com/USERNAME/llmtap/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/llmtap/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/llmtap)](https://pypi.org/project/llmtap/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)]()
+[![中文文档](https://img.shields.io/badge/README-中文-red)](README.zh-CN.md)
 
-## 功能
+![TUI](docs/img/tui.svg)
 
-- 单请求测试:TTFT、首包延迟、总延迟、ITL(逐 token 间隔)。
-- 吞吐统计:解码速度 tok/s、整体速度 tok/s、输入/输出 token 数。
-- 压测模式:n 个请求、可设并发。输出 mean/p50/p95/min/max/stdev。
-- 费用估算:配置单价表后自动计算单次与总费用。
-- 多端点管理:TOML 配置多个 provider 与模型。一个 profile 可挂多个模型。
-- TUI:表格展示所有模型的全部配置。可在线发起测试并实时看流式速度。
-- 离线演示:内置假 OpenAI 服务器,无 key 也能跑通全部功能。
+## Why
 
-## 安装
+You pay for `claude-opus-4.6` on a relay. Is the relay really serving that model? Is it fast? Which of your five API keys has the best TTFT tonight? `llmtap` answers these from the terminal. No dashboard, no signup, no data leaving your machine.
 
-要求 Python 3.10 或更高版本。
+## Features
+
+- **Latency test** — TTFT, time to first chunk, total time, inter-token latency (ITL p50/p95).
+- **Throughput stats** — decode speed (tok/s), overall speed, input/output tokens, usage-aware.
+- **Load bench** — N requests with configurable concurrency. Mean / p50 / p95 / min / max / stdev.
+- **Downgrade probe** — 6 fixed English checks, regex-scored, no judge model. Score 0-100.
+- **Relay scan** — discover every model on an endpoint via `GET /models`, test each for status and TTFT.
+- **Cost estimate** — optional per-model pricing in the config, cost per request and per run.
+- **TUI** — full config of all models in one table, live tok/s while streaming, stats panel.
+- **Two languages** — English and Chinese UI, switch any time with `t` in the TUI or `LLMTAP_LANG`.
+- **Works everywhere** — OpenAI, DeepSeek, Moonshot, Qwen, OpenRouter, Ollama, LM Studio, vLLM, or any relay.
+
+## Install
+
+Python 3.10+.
 
 ```bash
-uv tool install llmtap        # 推荐
-# 或
+uv tool install llmtap   # recommended
+# or
 pipx install llmtap
 pip install llmtap
 ```
 
-仓库内开发:
+From source:
 
 ```bash
-git clone <this repo> && cd llmtap
+git clone https://github.com/USERNAME/llmtap && cd llmtap
 uv venv && uv pip install -e .
 uv run llmtap --help
 ```
 
-## 快速开始:不写配置,直接测一个端点
+## Quick start — no config needed
 
 ```bash
-# 测本地 Ollama
+# local Ollama
 llmtap test --base-url http://127.0.0.1:11434/v1 --model qwen2.5:7b
 
-# 测任意 OpenAI 兼容端点,key 放在环境变量里
+# any OpenAI-compatible endpoint, key from an env var
 export MY_KEY=sk-xxx
-llmtap test --base-url https://api.deepseek.com/v1 --model deepseek-chat --api-key-env MY_KEY
+llmtap test --base-url https://api.deepseek.com/v1 --model deepseek-chat \
+    --api-key-env MY_KEY
 ```
 
-## 配置文件
+![llmtap test](docs/img/test.svg)
 
-查找顺序:`--config` 参数、`$LLMTAP_CONFIG`、`./llmtap.toml`、`~/.config/llmtap/config.toml`。
+## Config
 
-完整示例见 [examples/config.toml](examples/config.toml)。核心结构:
+Search order: `--config`, `$LLMTAP_CONFIG`, `./llmtap.toml`, `~/.config/llmtap/config.toml`. Full example: [examples/config.toml](examples/config.toml).
 
 ```toml
 [defaults]
@@ -57,51 +69,80 @@ prompt = "Count from 1 to 20 slowly."
 max_tokens = 512
 temperature = 0.7
 
-[profiles.deepseek]                  # 一个端点
+[profiles.deepseek]                # one endpoint, one model
 base_url = "https://api.deepseek.com/v1"
-api_key_env = "DEEPSEEK_API_KEY"     # key 从这个环境变量读取
-model = "deepseek-chat"              # 单模型
+api_key_env = "DEEPSEEK_API_KEY"
+model = "deepseek-chat"
 
-[profiles.kimi]                      # 一个端点挂多个模型
+[profiles.kimi]                    # one endpoint, several models
 base_url = "https://api.moonshot.cn/v1"
 api_key_env = "MOONSHOT_API_KEY"
 models = ["kimi-k2-0905-preview", "moonshot-v1-8k"]
 
-[pricing."deepseek-chat"]            # 可选:USD / 1M tokens
+[pricing."deepseek-chat"]          # optional, USD per 1M tokens
 input = 0.27
 output = 1.10
 ```
 
-配置后,profile 名为 `deepseek` 和 `kimi/kimi-k2-0905-preview`、`kimi/moonshot-v1-8k`。
+With `models`, profiles expand to `kimi/kimi-k2-0905-preview` etc. Unique prefixes work on the command line: `llmtap test kimi/k2`.
 
-命令里可用前缀匹配唯一名,如 `llmtap test kimi/k2`。
+![llmtap list](docs/img/list.svg)
 
-## 命令
+## Commands
 
-| 命令 | 作用 |
+| Command | What it does |
 |---|---|
-| `llmtap list` | 表格显示所有模型的所有配置 |
-| `llmtap show <profile>` | 一个 profile 的完整配置 |
-| `llmtap models <profile>` | 调 GET /models,列出端点上的模型 |
-| `llmtap test <profile>` | 单请求。输出全部指标 + 响应预览 |
-| `llmtap bench <profile> --n 10 -c 2` | 压测。输出 mean/p50/p95/min/max/stdev |
-| `llmtap bench --all` | 压测全部 profile,输出对比表 |
-| `llmtap tui` | 打开交互界面 |
+| `llmtap list` | table of every configured model with every setting |
+| `llmtap show PROFILE` | full config of one profile |
+| `llmtap models PROFILE` | call `GET /models`, list endpoint model ids |
+| `llmtap test PROFILE` | one request, all metrics, response preview |
+| `llmtap bench PROFILE --n 10 -c 2` | load bench with full statistics |
+| `llmtap bench --all` | bench every profile, comparison table |
+| `llmtap probe PROFILE` | downgrade probe, 6 checks, score 0-100 |
+| `llmtap scan PROFILE` | scan every model on the endpoint |
+| `llmtap tui` | interactive TUI |
 
-常用选项:`-p` 换 prompt。`--max-tokens`、`--temperature` 覆盖配置。`--no-stream` 测非流式。`--full` 打印完整响应。
+Common options: `-p` prompt, `--max-tokens`, `--temperature`, `--no-stream`, `--full`.
 
-## 指标说明
+![llmtap bench](docs/img/bench.svg)
 
-| 指标 | 含义 |
+## Metrics
+
+| Metric | Meaning |
 |---|---|
-| time to headers | 请求发出到收到响应头的耗时 |
-| time to first chunk | 第一个 SSE 数据块的到达时间 |
-| TTFT | 首个 token(含思考 token)到达时间。用户感知的等待 |
-| ITL | 相邻两个 token 的间隔。p95 大说明输出卡顿 |
-| decode speed | 首 token 之后的解码速度,tok/s |
-| overall speed | 全程折算速度,tok/s |
-| tokens in/out | 输入/输出 token 数。无 usage 时按块数估算,标注 estimated |
-| cost | 按 pricing 配置估算的美元费用 |
+| time to headers | request sent to response headers received |
+| time to first chunk | first SSE data chunk |
+| TTFT | first token (content or reasoning). What the user waits |
+| ITL | gap between two tokens. High p95 means stutter |
+| decode speed | tok/s after the first token |
+| overall speed | tok/s over the whole request |
+| tokens in/out | from `usage` when present, else estimated (marked) |
+| cost | from the optional pricing table |
+
+## How the downgrade probe works
+
+Six fixed English questions, each with exactly one checkable answer. No judge model — answers are matched by string and regex rules. `temperature=0`, non-stream, fixed `max_tokens`, so runs are comparable.
+
+| Check | Weight | Pass rule |
+|---|---|---|
+| Instruction following (reply only APPLE) | 10 | equals APPLE after cleanup |
+| Base64 decode | 15 | contains decoded text |
+| Needle in haystack (4-digit code in filler) | 20 | contains the code |
+| Bat and ball ($1.10 trap) | 15 | 0.05 / 5 cents |
+| Multiplication 17 x 24 | 20 | exactly 408 |
+| Set dedup [1,1,2,3,3,3] | 20 | exactly 3 |
+
+Score 85+ = pass, 60-84 = suspect, below 60 = strong signs of downgrade. Any request failure (401/429/5xx/timeout) marks the run inconclusive — not scored. `--strict` exits 1 below 85 for CI.
+
+Honest limitation: the checks are easy. Any cheap model can pass them all. A pass means "no obvious downgrade", not "this really is the flagship model".
+
+![llmtap probe](docs/img/probe.svg)
+
+## How the relay scan works
+
+`GET /models` lists every model id on the endpoint. Each model gets one minimal streaming request (fixed prompt, `max_tokens=16`). The scan records status, TTFT, total time, tok/s and errors, then prints: alive count, TTFT p50/p95, dead model list. Use `--only` to filter by substring, `--limit` to cap the count, `-c` for concurrency. Endpoints that reject `temperature` or `max_tokens` (o-series) are retried with defaults.
+
+![llmtap scan](docs/img/scan.svg)
 
 ## TUI
 
@@ -109,45 +150,57 @@ output = 1.10
 llmtap tui
 ```
 
-上方表格列出所有模型的全部配置。选中一行后:
-
-| 按键 | 作用 |
+| Key | Action |
 |---|---|
-| `r` | 单请求测试,右侧实时显示 tok/s |
-| `b` | 连续 5 次请求,右侧显示统计表 |
-| `Enter` | 弹窗查看该模型完整配置 |
-| `m` | 调 GET /models 列出端点模型 |
-| `l` | 重新加载配置文件 |
-| `q` | 退出 |
+| `r` | single test, live tok/s on the right |
+| `b` | bench x5, stats table |
+| `p` | downgrade probe |
+| `s` | scan every model on the endpoint |
+| `Enter` | full config popup |
+| `m` | list endpoint models |
+| `l` | reload config |
+| `t` | switch language (English/Chinese) |
+| `q` | quit |
 
-## 离线演示
+## Language
 
-不需要任何真实 key:
+English by default. Chinese when the system locale is Chinese.
 
 ```bash
-python scripts/fake_server.py &        # 起假端点,端口 8765
+export LLMTAP_LANG=zh   # or en
+```
+
+CLI `--help` text stays English. All tables, verdicts and TUI text switch.
+
+## Offline demo
+
+No key needed:
+
+```bash
+python scripts/fake_server.py &
 export LLMTAP_CONFIG=tests/local.toml
 llmtap list
 llmtap test local7b
 llmtap bench local7b --n 5 -c 2
-llmtap bench --all
+llmtap probe local7b
+llmtap scan local7b
 llmtap tui
 ```
 
-可用环境变量调延迟:`FAKE_TTFT_MS=200 FAKE_ITL_MS=30 python scripts/fake_server.py`。
+Shape the fake latency with `FAKE_TTFT_MS=200 FAKE_ITL_MS=30 python scripts/fake_server.py`.
 
-## 运行测试
+## Comparison
 
-```bash
-uv pip install -e . --group dev
-pytest
-```
+| Tool | Perf stats | Downgrade probe | Relay scan | TUI | Multi-endpoint config |
+|---|---|---|---|---|---|
+| llmtap | yes | yes | yes | yes | yes |
+| token-speed-tester | yes | no | no | no | no |
+| llm-relay-tester | partial | no | yes | no | partial |
+| llmprobe | no | yes | no | no | no |
 
-## 与现有工具的差别
+## Contributing
 
-- token-speed-tester(npm):测速统计强。无 TUI,无多端点配置管理。
-- llm-relay-tester:中转站可用性探测。无 TUI,无逐 token ITL。
-- llmtap:CLI 统计 + TUI 全配置总览 + 多 provider 配置,三合一。
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and new probe checks are welcome.
 
 ## License
 

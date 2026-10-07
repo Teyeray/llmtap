@@ -13,6 +13,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 from llmtap.config import load_targets  # noqa: E402
+from llmtap.i18n import set_lang, t  # noqa: E402
+from llmtap.probe import CHECKS, m_base64, m_batball, m_instruction, \
+    m_math, m_needle, m_setlen  # noqa: E402
 from llmtap.stats import percentile  # noqa: E402
 
 
@@ -42,8 +45,38 @@ model = "c"
     assert names == ["p/a", "p/b", "q"]
 
 
+def test_probe_matchers() -> None:
+    assert m_instruction("Apple")
+    assert m_instruction('"APPLE!"')
+    assert not m_instruction("The word is apple.")
+    assert m_base64("decoded: banana-42")
+    assert not m_base64("banana")
+    assert m_needle("the code is 7391")
+    assert not m_needle("739")
+    assert m_batball("$0.05")
+    assert m_batball("5 cents")
+    assert not m_batball("$0.10")
+    assert m_math("17 x 24 = 408")
+    assert not m_math("1408")
+    assert m_setlen("3")
+    assert not m_setlen("13")
+
+
+def test_probe_checks_weights_sum_100() -> None:
+    assert sum(c["weight"] for c in CHECKS) == 100
+
+
+def test_i18n_switch() -> None:
+    set_lang("en")
+    assert "downgrade" in t("probe.v.ok")
+    set_lang("zh")
+    assert "降智" in t("probe.v.ok")
+    set_lang("en")
+
+
 def test_cli_end_to_end() -> None:
-    env = dict(os.environ, LLMTAP_CONFIG=str(ROOT / "tests" / "local.toml"))
+    env = dict(os.environ, LLMTAP_CONFIG=str(ROOT / "tests" / "local.toml"),
+               LLMTAP_LANG="en")
     if not _port_open(8765):
         server = subprocess.Popen(
             [sys.executable, str(ROOT / "scripts" / "fake_server.py")],
@@ -66,6 +99,13 @@ def test_cli_end_to_end() -> None:
         out = subprocess.run(exe + ["models", "local7b"], env=env,
                              capture_output=True, text=True, cwd=str(ROOT))
         assert "fake-72b" in out.stdout, out.stdout + out.stderr
+        out = subprocess.run(exe + ["scan", "local7b", "-c", "2"], env=env,
+                             capture_output=True, text=True, cwd=str(ROOT))
+        assert "2/2" in out.stdout, out.stdout + out.stderr
+        out = subprocess.run(exe + ["probe", "local7b", "--timeout", "30"],
+                             env=env, capture_output=True, text=True,
+                             cwd=str(ROOT))
+        assert "downgrade" in out.stdout.lower(), out.stdout + out.stderr
     finally:
         if server:
             server.terminate()

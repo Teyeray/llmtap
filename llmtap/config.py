@@ -16,6 +16,8 @@ try:
 except ModuleNotFoundError:  # Python < 3.11
     import tomli as tomllib  # type: ignore
 
+from .i18n import t
+
 DEFAULT_PROMPT = (
     "Count from 1 to 20, one number per line. "
     "Then write one short sentence about the sea."
@@ -71,13 +73,13 @@ def find_config(explicit: str | None = None) -> Path | None:
     if explicit:
         p = Path(explicit).expanduser()
         if not p.is_file():
-            raise ConfigError(f"config file not found: {p}")
+            raise ConfigError(t("err.config_path_missing", path=p))
         return p
     env = os.environ.get("LLMTAP_CONFIG")
     if env:
         p = Path(env).expanduser()
         if not p.is_file():
-            raise ConfigError(f"LLMTAP_CONFIG points to a missing file: {p}")
+            raise ConfigError(t("err.env_config_missing", path=p))
         return p
     for cand in (Path("llmtap.toml"),
                  Path.home() / ".config" / "llmtap" / "config.toml"):
@@ -111,32 +113,29 @@ def load_targets(explicit: str | None = None) -> list[ModelTarget]:
     """Load the config file and expand profiles into ModelTarget objects."""
     path = find_config(explicit)
     if path is None:
-        raise ConfigError(
-            "no config file found. Create llmtap.toml in the current "
-            "directory, or ~/.config/llmtap/config.toml, or pass --config."
-        )
+        raise ConfigError(t("err.config_not_found"))
     data = tomllib.loads(path.read_text("utf-8"))
     defaults: dict = data.get("defaults") or {}
     pricing: dict = data.get("pricing") or {}
     profiles: dict = data.get("profiles") or {}
     if not profiles:
-        raise ConfigError(f"no [profiles.*] tables in {path}")
+        raise ConfigError(t("err.no_profiles", path=path))
 
     targets: list[ModelTarget] = []
     for key, prof in profiles.items():
         if not isinstance(prof, dict):
-            raise ConfigError(f"profile '{key}' must be a table")
+            raise ConfigError(t("err.profile_table", key=key))
         base_url = prof.get("base_url")
         if not base_url:
-            raise ConfigError(f"profile '{key}': base_url is required")
+            raise ConfigError(t("err.profile_base_url", key=key))
         if "models" in prof:
             models = prof["models"]
             if not isinstance(models, list) or not models:
-                raise ConfigError(f"profile '{key}': 'models' must be a list")
+                raise ConfigError(t("err.profile_models_list", key=key))
         elif "model" in prof:
             models = [prof["model"]]
         else:
-            raise ConfigError(f"profile '{key}': set 'model' or 'models'")
+            raise ConfigError(t("err.profile_model_missing", key=key))
 
         env_name = prof.get("api_key_env") or defaults.get("api_key_env") or ""
         api_key = os.environ.get(env_name, "") if env_name else ""
@@ -181,14 +180,15 @@ def adhoc_target(base_url: str, model: str, api_key_env: str = "",
 
 def pick_target(targets: list[ModelTarget], name: str) -> ModelTarget:
     """Find a target by exact profile name, or by a unique name prefix."""
-    for t in targets:
-        if t.profile == name:
-            return t
-    prefix_hits = [t for t in targets if t.profile.startswith(name)]
+    for target in targets:
+        if target.profile == name:
+            return target
+    prefix_hits = [x for x in targets if x.profile.startswith(name)]
     if len(prefix_hits) == 1:
         return prefix_hits[0]
     if len(prefix_hits) > 1:
         names = ", ".join(t.profile for t in prefix_hits)
-        raise ConfigError(f"'{name}' matches several profiles: {names}")
+        raise ConfigError(t("err.profile_ambiguous", name=name, names=names))
     available = ", ".join(t.profile for t in targets)
-    raise ConfigError(f"profile '{name}' not found. Available: {available}")
+    raise ConfigError(t("err.profile_not_found", name=name,
+                        names=available))

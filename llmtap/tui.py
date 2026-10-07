@@ -1,4 +1,7 @@
-"""Textual TUI: model config table, live test view, stats panel."""
+"""Textual TUI: model config table, live test view, stats panel.
+
+Press t to switch the UI language (English/Chinese) at any time.
+"""
 
 from __future__ import annotations
 
@@ -9,13 +12,16 @@ from rich.table import Table
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Footer, Header, RichLog, Static
 
 from .client import bench_run, list_models, run_chat
 from .config import ConfigError, ModelTarget, load_targets
+from .i18n import t, toggle_lang
+from .probe import probe_tables, run_probe
 from .report import bench_tables, single_result_table
+from .scan import scan_endpoint, scan_tables
 from .stats import aggregate, apply_cost
 
 CSS = """
@@ -25,10 +31,15 @@ CSS = """
 #stats { width: 1fr; border: round $secondary; }
 #stats Static { padding: 0 1; }
 DetailsScreen { align: center middle; }
-#details { width: 72; max-height: 80%; border: thick $accent; padding: 1 2; background: $surface; }
+#details { width: 72; max-height: 80%; border: thick $accent;
+            padding: 1 2; background: $surface; }
 """
 
 BENCH_N = 5
+
+COL_KEYS = ("col.profile", "col.model", "col.base_url", "col.api_key",
+            "col.temp", "col.max_tok", "col.timeout", "col.price_in",
+            "col.price_out")
 
 
 class DetailsScreen(ModalScreen[None]):
@@ -53,11 +64,13 @@ class DetailsScreen(ModalScreen[None]):
 
 class LlmtapApp(App[None]):
     TITLE = "llmtap — LLM API tester"
-    SUB_TITLE = "r test · b bench · enter details · m models · l reload"
 
     BINDINGS = [
         Binding("r", "run_test", "Test"),
         Binding("b", "bench", f"Bench x{BENCH_N}"),
+        Binding("p", "probe", "Probe"),
+        Binding("s", "scan", "Scan"),
+        Binding("t", "toggle_lang", "Lang"),
         Binding("m", "models", "Models"),
         Binding("l", "reload", "Reload"),
         Binding("q", "quit", "Quit"),
@@ -76,35 +89,40 @@ class LlmtapApp(App[None]):
         yield DataTable(id="table", cursor_type="row", zebra_stripes=True)
         with Horizontal(id="panes"):
             yield RichLog(id="log", markup=True, wrap=True)
-            yield Static(id="stats")
+            with VerticalScroll(id="stats"):
+                yield Static(id="stats_inner")
         yield Footer()
 
     def on_mount(self) -> None:
-        table = self.query_one("#table", DataTable)
-        for col in ("profile", "model", "base_url", "api key", "temp",
-                    "max_tok", "timeout", "$in/1M", "$out/1M"):
-            table.add_column(col)
+        self.sub_title = t("tui.subtitle")
+        self._build_table()
         self.reload_config()
+
+    def _build_table(self) -> None:
+        table = self.query_one("#table", DataTable)
+        table.clear(columns=True)
+        for key in COL_KEYS:
+            table.add_column(t(key))
+        for target in self.targets:
+            temp = "-" if target.temperature is None else f"{target.temperature}"
+            mt = "-" if target.max_tokens is None else f"{target.max_tokens}"
+            pin = "-" if target.price_in is None else f"{target.price_in}"
+            pout = "-" if target.price_out is None else f"{target.price_out}"
+            table.add_row(target.profile, target.model, target.base_url,
+                          target.key_display, temp, mt,
+                          f"{target.timeout_s:.0f}", pin, pout,
+                          key=target.profile)
 
     def reload_config(self) -> None:
         try:
             self.targets = load_targets(self.config_path)
         except ConfigError as e:
             self.targets = []
-            self.log_line(f"[red]config error: {e}[/red]")
+            self.log_line(f"[red]{t('tui.config_error', msg=e)}[/red]")
             return
-        table = self.query_one("#table", DataTable)
-        table.clear()
-        for t in self.targets:
-            temp = "-" if t.temperature is None else f"{t.temperature}"
-            mt = "-" if t.max_tokens is None else f"{t.max_tokens}"
-            pin = "-" if t.price_in is None else f"{t.price_in}"
-            pout = "-" if t.price_out is None else f"{t.price_out}"
-            table.add_row(t.profile, t.model, t.base_url, t.key_display,
-                          temp, mt, f"{t.timeout_s:.0f}", pin, pout,
-                          key=t.profile)
-        self.log_line(f"[dim]loaded {len(self.targets)} targets "
-                      f"from {self.targets[0].source}[/dim]")
+        self._build_table()
+        src = self.targets[0].source
+        self.log_line(f"[dim]{t('tui.loaded', n=len(self.targets), src=src)}[/dim]")
 
     # ---------- helpers ----------
 
@@ -120,12 +138,19 @@ class LlmtapApp(App[None]):
         self.query_one("#log", RichLog).write(Text.from_markup(text))
 
     def show_stats(self, renderable) -> None:
-        self.query_one("#stats", Static).update(renderable)
+        self.query_one("#stats_inner", Static).update(renderable)
 
     # ---------- actions ----------
 
     def action_reload(self) -> None:
         self.reload_config()
+
+    def action_toggle_lang(self) -> None:
+        lang = toggle_lang()
+        self.sub_title = t("tui.subtitle")
+        self._build_table()
+        name = t("lang.zh") if lang == "zh" else t("lang.en")
+        self.notify(t("tui.lang_switched", lang=name), timeout=3)
 
     def on_data_table_row_selected(self, event) -> None:
         target = self.current_target
@@ -142,6 +167,16 @@ class LlmtapApp(App[None]):
         if target and not self.busy:
             self.run_worker(self._run_bench(target), exclusive=True)
 
+    def action_probe(self) -> None:
+        target = self.current_target
+        if target and not self.busy:
+            self.run_worker(self._run_probe(target), exclusive=True)
+
+    def action_scan(self) -> None:
+        target = self.current_target
+        if target and not self.busy:
+            self.run_worker(self._run_scan(target), exclusive=True)
+
     def action_models(self) -> None:
         target = self.current_target
         if target and not self.busy:
@@ -151,8 +186,9 @@ class LlmtapApp(App[None]):
 
     async def _run_single(self, target: ModelTarget) -> None:
         self.busy = True
-        self.sub_title = f"testing {target.profile}…"
-        self.show_stats(Panel(f"[b]{target.profile}[/b]\nwaiting for tokens…"))
+        self.sub_title = f"{t('tui.testing', name=target.profile)}…"
+        self.show_stats(Panel(f"[b]{target.profile}[/b]\n"
+                              f"{t('tui.waiting')}…"))
         last_ui = [0.0]
 
         def on_event(kind: str, data: dict) -> None:
@@ -171,26 +207,28 @@ class LlmtapApp(App[None]):
         result = await run_chat(target, on_event=on_event)
         apply_cost([result], target)
         self.show_stats(single_result_table(result, target))
-        status = "[green]ok[/green]" if result.ok else "[red]failed[/red]"
-        self.log_line(f"{target.profile}: {status} "
+        mark = f"[green]{t('n.ok')}[/green]" if result.ok \
+            else f"[red]{t('n.failed')}[/red]"
+        self.log_line(f"{target.profile}: {mark} "
                       f"ttft={result.ttft_ms or 0:.0f}ms "
                       f"total={result.total_ms or 0:.0f}ms")
         if result.ok:
-            preview = result.text[:200] or f"({result.reasoning_chars} reasoning chars)"
+            preview = result.text[:200] \
+                or f"({result.reasoning_chars} reasoning chars)"
             self.log_line(f"[dim]{preview}[/dim]")
         elif result.error:
             self.log_line(f"[red]{result.error}[/red]")
         self.busy = False
-        self.sub_title = ""
+        self.sub_title = t("tui.subtitle")
 
     async def _run_bench(self, target: ModelTarget) -> None:
         self.busy = True
-        self.sub_title = f"bench {target.profile} x{BENCH_N}…"
+        self.sub_title = f"{t('tui.benching', name=target.profile, n=BENCH_N)}…"
         done = [0]
 
         def on_progress(i: int, r) -> None:
             done[0] += 1
-            mark = "ok" if r.ok else "ERR"
+            mark = t("n.ok") if r.ok else t("n.failed")
             self.log_line(f"[dim]{done[0]}/{BENCH_N}[/dim] {mark} "
                           f"ttft={r.ttft_ms or 0:.0f}ms "
                           f"total={r.total_ms or 0:.0f}ms")
@@ -200,27 +238,80 @@ class LlmtapApp(App[None]):
         apply_cost(results, target)
         agg = aggregate(results, wall)
         self.show_stats(bench_tables(agg, target, BENCH_N, 1, True))
-        self.log_line(f"[b]{target.profile}[/b] bench done: "
-                      f"{agg.ok}/{agg.n} ok")
+        self.log_line(t("tui.bench_done", name=f"[b]{target.profile}[/b]",
+                        ok=agg.ok, n=agg.n))
         self.busy = False
-        self.sub_title = ""
+        self.sub_title = t("tui.subtitle")
+
+    async def _run_probe(self, target: ModelTarget) -> None:
+        self.busy = True
+        self.sub_title = f"{t('tui.probing', name=target.profile)}…"
+        self.show_stats(Panel(f"[b]{target.profile}[/b]\n"
+                              f"{t('tui.probe_running')}…"))
+        done = [0]
+
+        def on_progress(cr) -> None:
+            done[0] += 1
+            if cr.passed is None:
+                mark = t("probe.err")
+            elif cr.passed:
+                mark = t("probe.pass")
+            else:
+                mark = t("probe.fail")
+            ms_s = f" ({cr.ms:.0f} ms)" if cr.ms else ""
+            self.log_line(f"[dim]{done[0]}/6[/dim] {cr.name}: "
+                          f"{mark}{ms_s}")
+
+        report = await run_probe(target, on_progress=on_progress)
+        self.show_stats(probe_tables(report, target))
+        score = report.score
+        score_s = f"{score:.0f}" if score is not None else "?"
+        self.log_line(t("tui.probe_done", name=f"[b]{target.profile}[/b]",
+                        score=score_s, verdict=report.verdict))
+        self.busy = False
+        self.sub_title = t("tui.subtitle")
+
+    async def _run_scan(self, target: ModelTarget) -> None:
+        self.busy = True
+        self.sub_title = f"{t('tui.scanning', host=target.host)}…"
+        self.show_stats(Panel(f"[b]{target.host}[/b]\n"
+                              f"{t('tui.listing')}…"))
+        done = [0]
+
+        def on_progress(row) -> None:
+            done[0] += 1
+            mark = t("scan.ok") if row.ok else t("scan.fail")
+            ttft = f"{row.ttft_ms:.0f}ms" if row.ttft_ms is not None else "-"
+            self.log_line(f"[dim]{done[0]}[/dim] {mark} {row.model} "
+                          f"ttft={ttft}")
+
+        report = await scan_endpoint(target, concurrency=4,
+                                     on_progress=on_progress)
+        self.show_stats(scan_tables(report, target))
+        self.log_line(t("tui.scan_done", host=f"[b]{target.host}[/b]",
+                        ok=len(report.alive), n=len(report.rows)))
+        if report.fetch_error:
+            self.log_line(f"[red]{report.fetch_error}[/red]")
+        self.busy = False
+        self.sub_title = t("tui.subtitle")
 
     async def _run_models(self, target: ModelTarget) -> None:
         self.busy = True
-        self.sub_title = f"GET /models on {target.host}…"
+        self.sub_title = f"{t('tui.getting_models', host=target.host)}…"
         status, ids, err = await list_models(target)
         if err:
             self.log_line(f"[red]{err}[/red]")
         else:
-            self.log_line(f"[b]{target.host}[/b]: {len(ids)} models")
+            self.log_line(t("tui.models_done",
+                            host=f"[b]{target.host}[/b]", n=len(ids)))
             self.log_line(", ".join(ids))
-            table = Table(title="GET /models", box=None)
-            table.add_column("model id")
+            table = Table(title=t("report.get_models"), box=None)
+            table.add_column(t("col.model_id"))
             for i in ids:
                 table.add_row(i)
             self.show_stats(table)
         self.busy = False
-        self.sub_title = ""
+        self.sub_title = t("tui.subtitle")
 
 
 if __name__ == "__main__":

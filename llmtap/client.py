@@ -352,6 +352,45 @@ async def bench_run(
     return list(results), wall
 
 
+async def chat_with_fallback(
+    target: ModelTarget,
+    *,
+    prompt: str,
+    stream: bool = True,
+    max_tokens: int | None = 16,
+    temperature: float | None = 0.0,
+    timeout: float | None = None,
+    include_usage: bool = True,
+    client: httpx.AsyncClient | None = None,
+    on_event=None,
+) -> RequestResult:
+    """run_chat plus retries for servers that reject some parameters.
+
+    Some models (o-series, a few relays) reject temperature or max_tokens.
+    Retry step by step: drop temperature, then drop max_tokens.
+    """
+    plans = [(temperature, max_tokens), (None, max_tokens), (None, None)]
+    r = None
+    for temp, mt in plans:
+        r = await run_chat(target, prompt=prompt, stream=stream,
+                           max_tokens=mt, temperature=temp, timeout=timeout,
+                           include_usage=include_usage, client=client,
+                           on_event=on_event)
+        if r.ok or r.status != 400:
+            break
+        e = r.error.lower()
+        if temp is not None and "temperature" in e:
+            continue
+        if mt is not None and ("max_tokens" in e
+                               or "max_completion_tokens" in e):
+            continue
+        if ("unsupported" in e or "unknown" in e or "unrecognized" in e) \
+                and (temp is not None or mt is not None):
+            continue
+        break
+    return r
+
+
 async def list_models(
     target: ModelTarget,
     timeout: float | None = None,

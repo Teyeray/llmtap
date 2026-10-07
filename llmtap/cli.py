@@ -9,12 +9,15 @@ import typer
 from rich.console import Console
 
 from . import __version__
-from .client import bench_run, list_models, run_chat
+from .client import bench_run, chat_with_fallback, list_models, run_chat
 from .config import (ConfigError, ModelTarget, adhoc_target, load_targets,
                      pick_target)
+from .i18n import t
+from .probe import run_probe
 from .report import (bench_tables, compare_table, models_table,
                      response_preview, single_result_table, target_detail,
                      targets_table)
+from .scan import scan_endpoint
 from .stats import Agg, aggregate, apply_cost
 
 app = typer.Typer(
@@ -43,7 +46,7 @@ def _load(config: Optional[str]) -> list[ModelTarget]:
     try:
         return load_targets(config)
     except ConfigError as e:
-        console.print(f"[red]config error:[/red] {e}")
+        console.print(f"[red]{t('cli.config_error', msg=e)}[/red]")
         raise typer.Exit(1) from None
 
 
@@ -52,11 +55,11 @@ def _pick(profile: Optional[str], base_url: Optional[str],
           config: Optional[str], prompt: Optional[str]) -> ModelTarget:
     if base_url or model:
         if not (base_url and model):
-            console.print("[red]--base-url and --model must be used together[/red]")
+            console.print(f"[red]{t('cli.flags_together')}[/red]")
             raise typer.Exit(1)
         return adhoc_target(base_url, model, key_env or "", prompt)
     if not profile:
-        console.print("give PROFILE, or pass --base-url and --model")
+        console.print(t("cli.need_profile"))
         raise typer.Exit(1)
     try:
         return pick_target(_load(config), profile)
@@ -76,8 +79,8 @@ def list(config: Optional[str] = CFG) -> None:
     """Show every configured model with every setting."""
     targets = _load(config)
     console.print(targets_table(targets))
-    console.print(f"[dim]{len(targets)} targets from "
-                  f"{targets[0].source if targets else 'nowhere'}[/dim]")
+    src = targets[0].source if targets else ""
+    console.print(f"[dim]{t('cli.n_targets', n=len(targets), src=src)}[/dim]")
 
 
 @app.command()
@@ -102,8 +105,8 @@ def models(profile: Optional[str] = PROFILE, config: Optional[str] = CFG,
         console.print(f"[red]{err}[/red]")
         raise typer.Exit(1)
     console.print(models_table(ids))
-    console.print(f"[dim]{len(ids)} models on {target.base_url} "
-                  f"(HTTP {status})[/dim]")
+    console.print(f"[dim]{t('cli.n_models', n=len(ids), url=target.base_url,
+                            status=status)}[/dim]")
 
 
 @app.command()
@@ -157,6 +160,61 @@ def bench(profile: Optional[str] = PROFILE, config: Optional[str] = CFG,
             console.print()
     if all:
         console.print(compare_table(rows))
+
+
+@app.command()
+def probe(profile: Optional[str] = PROFILE, config: Optional[str] = CFG,
+          base_url: Optional[str] = BASE_URL, model: Optional[str] = MODEL,
+          key_env: Optional[str] = KEY_ENV,
+          timeout: float = typer.Option(120.0, "--timeout",
+                                        help="Per-request timeout in seconds"),
+          strict: bool = typer.Option(False, "--strict",
+                                      help="Exit 1 when score is below 85")) -> None:
+    """Downgrade probe: 6 fixed checks, regex-scored, no judge model."""
+    target = _pick(profile, base_url, model, key_env, config, None)
+    with console.status(f"[bold]{t('cli.probing', name=target.profile)}…[/bold]") as status:
+        def on_progress(cr) -> None:
+            mark = t("probe.pass") if cr.passed else t("probe.fail")
+            status.update(f"[bold]{t('cli.probing', name=target.profile)}[/bold] "
+                          f"({cr.name}: {mark})")
+        report = asyncio.run(run_probe(target, timeout=timeout,
+                                       on_progress=on_progress))
+    from .probe import probe_tables
+    console.print(probe_tables(report, target))
+    if report.errors or (strict and (report.score or 0) < 85):
+        raise typer.Exit(1)
+
+
+@app.command()
+def scan(profile: Optional[str] = PROFILE, config: Optional[str] = CFG,
+         base_url: Optional[str] = BASE_URL, model: Optional[str] = MODEL,
+         key_env: Optional[str] = KEY_ENV,
+         concurrency: int = typer.Option(4, "--concurrency", "-c",
+                                         help="Parallel model tests"),
+         only: Optional[str] = typer.Option(None, "--only",
+                                            help="Only models containing this "
+                                                 "substring"),
+         limit: Optional[int] = typer.Option(None, "--limit",
+                                             help="Test at most N models"),
+         timeout: float = typer.Option(20.0, "--timeout",
+                                       help="Per-request timeout in seconds")) -> None:
+    """Scan a relay: GET /models, then test every model for TTFT and status."""
+    target = _pick(profile, base_url, model, key_env, config, None)
+    with console.status(f"[bold]{t('cli.scanning', host=target.host)}…[/bold]") as status:
+        done = [0]
+
+        def on_progress(row) -> None:
+            done[0] += 1
+            mark = t("scan.ok") if row.ok else t("scan.fail")
+            status.update(f"[bold]{t('cli.scanning', host=target.host)}[/bold] "
+                          f"({done[0]}: {mark} {row.model})")
+        report = asyncio.run(scan_endpoint(
+            target, only=only, limit=limit, concurrency=concurrency,
+            timeout=timeout, on_progress=on_progress))
+    from .scan import scan_tables
+    console.print(scan_tables(report, target))
+    if report.fetch_error or not report.alive:
+        raise typer.Exit(1)
 
 
 @app.command()
